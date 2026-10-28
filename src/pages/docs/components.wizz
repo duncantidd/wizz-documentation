@@ -1,0 +1,316 @@
+<script>
+  import TopNav from "../../components/TopNav.wizz";
+  import Sidebar from "../../components/Sidebar.wizz";
+  import Toc from "../../components/Toc.wizz";
+  import CodeBlock from "../../components/CodeBlock.wizz";
+  import Callout from "../../components/Callout.wizz";
+  import PageNav from "../../components/PageNav.wizz";
+  import PropsDemo from "../../components/PropsDemo.wizz";
+
+  const toc = [
+    { id: "anatomy", label: "Anatomy of a component" },
+    { id: "expressions", label: "Template expressions" },
+    { id: "attributes", label: "Dynamic attributes" },
+    { id: "props", label: "Props" },
+    { id: "props-demo", label: "Live: props in action", depth: 3 },
+    { id: "composition", label: "Composition & imports" },
+    { id: "styles", label: "Scoped styles" },
+    { id: "head", label: "Document head" },
+    { id: "lifecycle", label: "Lifecycle & DOM rendering" },
+    { id: "rules", label: "Rules the compiler enforces" }
+  ];
+
+  // Sample import lines are written as ${"import"}: the compiler's component
+  // import extractor is not string-aware and would otherwise turn an import
+  // inside this template literal into a real module import.
+  const anatomySource = `<script>
+  // 1. Optional script: imports, props, state, handlers, hooks.
+  ${"import"} Avatar from "./Avatar.wizz";
+
+  export let user;               // prop (read-only here)
+  let expanded = false;          // reactive state
+
+  function toggle() {
+    expanded = !expanded;
+  }
+<\/script>
+
+<wizz:head>
+  <title>{user.name} - Profile</title>
+</wizz:head>
+
+<article class="profile">        <!-- 2. Exactly one root element -->
+  <Avatar src={user.avatar} />
+  <h2>{user.name}</h2>
+  <button on:click={toggle} aria-expanded={expanded}>Details</button>
+</article>
+
+<wizz:style>
+  .profile { display: grid; gap: 1rem; }
+  h2 { margin: 0; }              /* scoped: other h2s are untouched */
+</wizz:style>`;
+
+  const expressionsSource = `<script>
+  let user = { name: "Ada", role: "admin" };
+  let items = ["a", "b", "c"];
+
+  // Derive anything non-trivial in the script, then reference it by name.
+  let itemCount = items.length;
+  let isAdmin = user.role === "admin";
+  let greeting = "Welcome back, " + user.name;
+<\/script>
+
+<section>
+  <h2>{greeting}</h2>                 <!-- identifier -->
+  <p>{user.name}</p>                  <!-- member access -->
+  <p>{"v1.0"} · {42}</p>               <!-- string / number literals -->
+  {#if user.role === "admin"}         <!-- strict equality -->
+    <p>{itemCount} items</p>
+  {/if}
+</section>`;
+
+  const attributesSource = `<script>
+  let name = "Ada";
+  let selected = true;
+  let busy = false;
+  let active = true;
+  // Compose multi-part values in the script:
+  let cardClass = active ? "card is-active" : "card";
+  let profileHref = "/users/" + name.toLowerCase();
+<\/script>
+
+<div class={cardClass}>
+  <a href={profileHref}>Profile</a>
+  <input value={name} checked={selected} disabled={busy} aria-label={name} />
+</div>`;
+
+  const childSource = `<script>
+  export let name = "Guest";   // default when the parent omits it
+  export let count;            // bare declaration defaults to undefined
+<\/script>
+
+<p>Hello {name}, clicked {count} times</p>`;
+
+  const parentSource = `<script>
+  ${"import"} Greeting from "./components/Greeting.wizz";
+  let clicks = 0;
+
+  function click() {
+    clicks += 1;
+  }
+<\/script>
+
+<main>
+  <Greeting name="Ada" count={clicks} emphasized />
+  <button on:click={click}>Click</button>
+</main>`;
+
+  const meterParent = `<script>
+  ${"import"} Meter from "./Meter.wizz";
+
+  let level = 40;
+  let barStyle = "transform: scaleX(0.4)";
+
+  function handleLevel(event) {
+    level = Number(event.target.value);
+    barStyle = "transform: scaleX(" + level / 100 + ")";
+  }
+<\/script>
+
+<div class="props-demo">
+  <input type="range" value={level} on:input={handleLevel} />
+  <Meter label="CPU budget" value={level} barStyle={barStyle} />
+</div>`;
+
+  const callbackSource = `<script>
+  ${"import"} SearchBar from "./SearchBar.wizz";
+  let query = "";
+
+  // Children talk to parents through callback props:
+  function handleSearch(next) {
+    query = next;
+  }
+<\/script>
+
+<div class="toolbar">
+  <SearchBar onSearch={handleSearch} placeholder="Filter…" />
+</div>`;
+
+  const styleSource = `<main>
+  <Card />
+  <h2>Page heading</h2>
+</main>
+
+<wizz:style>
+  h2 { font-size: 24px; }
+  /* compiles to: h2[data-wizz-s="s1ab2c3"] { font-size: 24px; } */
+
+  @keyframes fade { from { opacity: 0; } }
+  /* the name gains the scope suffix: @keyframes fade-s1ab2c3 */
+</wizz:style>`;
+
+  const headSource = `<script>
+  export let post;
+<\/script>
+
+<wizz:head>
+  <title>{post.title} — My Blog</title>
+  <meta name="description" content={post.summary}>
+  <link rel="canonical" href={post.url}>
+</wizz:head>
+
+<article>
+  <h1>{post.title}</h1>
+</article>`;
+
+  const lifecycleSource = `<script>
+  let width = 0;
+  let observer = null;
+
+  onMount(() => {
+    // Runs after the component is attached, its children are mounted,
+    // and the initial update has completed. Browser APIs are safe here.
+    const node = document.querySelector(".panel");
+    observer = new ResizeObserver(([entry]) => {
+      width = Math.round(entry.contentRect.width);
+    });
+    observer.observe(node);
+  });
+
+  onDestroy(() => {
+    // Runs before children are destroyed and the root is removed.
+    observer.disconnect();
+  });
+<\/script>
+
+<section class="panel">
+  <p>{width}px wide</p>
+</section>`;
+
+  const mountSource = `import mountComponent from "./dist/components/Counter.js";
+
+const handle = mountComponent(document.querySelector("#slot"), { label: "Clicks" });
+handle.setProps({ label: "Taps" });   // present when the component declares props
+handle.destroy();                     // call exactly once`;
+</script>
+
+<wizz:head>
+  <title>Components & Templating — Wizz.js Docs</title>
+  <meta name="description" content="Write .wizz components: single-root templates, safe expressions, dynamic attributes, props, composition, scoped styles, document head, and lifecycle hooks.">
+</wizz:head>
+
+<div class="site">
+  <TopNav section="docs" showMenu={true} />
+  <div class="doc-shell">
+    <Sidebar current="/docs/components" />
+    <main id="main" class="doc-main glass">
+      <article class="prose">
+        <header>
+          <p class="eyebrow rise" style="--i: 0">Core Concepts</p>
+          <h1 class="rise" style="--i: 1">Components & Templating</h1>
+          <p class="lead rise" style="--i: 2">A <code>.wizz</code> file is one component: a template with exactly one root element, plus up to one each of <code>{"<script>"}</code>, <code>{"<wizz:head>"}</code>, and <code>{"<wizz:style>"}</code>. The compiler turns it into DOM-creation and update instructions — there is no template interpreter in the browser.</p>
+        </header>
+
+        <h2 id="anatomy" class="reveal">Anatomy of a component</h2>
+        <CodeBlock code={anatomySource} lang="wizz" title="src/components/Profile.wizz" />
+        <ul>
+          <li><strong>Template</strong> — exactly one native root element, per the language contract. Wrap siblings in a single element.</li>
+          <li><strong>{"<script>"}</strong> — top-level <code>let</code> is reactive state, <code>export let</code> declares a prop, named functions are handlers, and <code>onMount</code>/<code>onDestroy</code> register hooks with no import.</li>
+          <li><strong>{"<wizz:head>"}</strong> — only <code>{"<title>"}</code>, <code>{"<meta>"}</code>, and <code>{"<link>"}</code>.</li>
+          <li><strong>{"<wizz:style>"}</strong> — raw CSS, scoped to this component. A plain <code>{"<style>"}</code> element is rejected with a pointer to <code>{"<wizz:style>"}</code>.</li>
+        </ul>
+
+        <h2 id="expressions" class="reveal">Template expressions</h2>
+        <p>Curly braces accept a deliberately small, statically analyzable grammar: <strong>identifiers</strong>, <strong>member access</strong>, <strong>string and number literals</strong>, and <strong>strict equality</strong>. Function calls and ternaries fail with <code>WIZZ-P033</code>. Treat anything outside that subset as unsupported even when it happens to parse — compute it in the script and reference the result by name.</p>
+        <CodeBlock code={expressionsSource} lang="wizz" title="Expressions.wizz" />
+        <p>Text output escapes <code>&</code>, <code>{"<"}</code>, and <code>{">"}</code>; attribute values additionally escape <code>"</code>. To show a literal angle bracket in prose, interpolate a string literal such as <code>{'{"<script>"}'}</code> — HTML entities are not decoded in templates.</p>
+
+        <h2 id="attributes" class="reveal">Dynamic attributes</h2>
+        <p>Bind an attribute by making its <strong>entire, unquoted value</strong> an expression: <code>{"class={cardClass}"}</code>. <code>value</code>, <code>checked</code>, and <code>disabled</code> update as DOM properties; every other name updates as an HTML attribute.</p>
+        <CodeBlock code={attributesSource} lang="wizz" title="Attributes.wizz" />
+        <Callout kind="warn" title="Quoted values are static" body={'In the current compiler, class="card {state}" or href="{url}" render those characters literally. Precompute the full string in the script and bind it unquoted: class={cardClass}.'} />
+
+        <h2 id="props" class="reveal">Props</h2>
+        <p>A child declares inputs with <code>export let</code>. The parent passes them as attributes on the component tag: static attributes pass strings, bare attributes pass <code>true</code>, and <code>{"{expressions}"}</code> pass values that re-evaluate whenever their dependencies change.</p>
+        <div class="grid-2">
+          <CodeBlock code={childSource} lang="wizz" title="Greeting.wizz" />
+          <CodeBlock code={parentSource} lang="wizz" title="App.wizz" />
+        </div>
+        <ul>
+          <li>New values arrive through the child's <code>setProps()</code> and it rerenders <strong>in place</strong> — DOM identity and internal state survive.</li>
+          <li>Props are <strong>read-only</strong> in the child: assigning one is a compile error (<code>WIZZ-G015</code>).</li>
+          <li>An omitted prop keeps its default; passing <code>undefined</code> explicitly restores it. Undeclared attributes are ignored.</li>
+        </ul>
+
+        <h3 id="props-demo" class="reveal">Live: props in action</h3>
+        <p>This sandbox is two real Wizz components. The parent owns the state; the child <code>Meter</code> only receives props. Every value the child shows is computed by the parent, so the child stays a pure view.</p>
+        <div class="sandbox">
+          <p class="sandbox-label">Live · PropsDemo.wizz → Meter.wizz</p>
+          <PropsDemo />
+        </div>
+        <CodeBlock code={meterParent} lang="wizz" title="PropsDemo.wizz (excerpt)" />
+        <Callout kind="tip" title="Derive in the parent or in the handler" body="A child's script runs once, at mount. A let computed from a prop at the top level will not recompute when that prop changes — bind the prop directly, or have the parent pass the derived value." />
+
+        <h2 id="composition" class="reveal">Composition & imports</h2>
+        <p>Import components with a <strong>default import</strong> of a relative <code>.wizz</code> path and render them as <strong>self-closing tags inside a native element</strong>. The build rewrites the import to the compiled <code>.js</code> path.</p>
+        <ul>
+          <li><strong>No children or slots</strong> — pass content through props, or compose with native elements around the tag.</li>
+          <li><strong>No <code>on:</code> directives on component tags</strong> — pass a callback prop instead.</li>
+          <li><strong>No components inside {"{#each}"}</strong> — render native markup in loops.</li>
+          <li>Destroying a parent destroys every imported child.</li>
+        </ul>
+        <CodeBlock code={callbackSource} lang="wizz" title="Toolbar.wizz" />
+
+        <h2 id="styles" class="reveal">Scoped styles</h2>
+        <p>Every element a component renders carries a generated <code>data-wizz-s</code> attribute, and each selector's terminal element gains it — so two components can both style <code>h2</code> without colliding. <code>@keyframes</code> names are suffixed the same way. Global resets and tokens stay in <code>App.css</code>.</p>
+        <CodeBlock code={styleSource} lang="wizz" title="Page.wizz" />
+        <Callout kind="note" title="Styling a child from the parent" body="Scoped selectors only match the component's own elements. Style a child through CSS custom properties it reads (style={'--accent: ...'} on a wrapper), or through classes on the native wrapper around it." />
+
+        <h2 id="head" class="reveal">Document head</h2>
+        <p><code>{"<wizz:head>"}</code> declares per-page metadata. Expressions evaluate at render time on the server and at mount on the client; the server delivers the head in the document and hydration adopts it. Head content follows navigation, not state — reactive head updates are out of scope.</p>
+        <CodeBlock code={headSource} lang="wizz" title="Post.wizz" />
+        <p>When several mounted components declare a <code>{"<title>"}</code>, the last in tree order wins with a development warning; <code>{"<meta>"}</code> and <code>{"<link>"}</code> concatenate. Keep the document shell free of its own <code>{"<title>"}</code> so a page's title is the only one.</p>
+
+        <h2 id="lifecycle" class="reveal">Lifecycle & DOM rendering</h2>
+        <CodeBlock code={lifecycleSource} lang="wizz" title="Panel.wizz" />
+        <ul>
+          <li><code>onMount</code> runs once after attach, child mounts, and the initial update. State assigned there flows through the batched scheduler.</li>
+          <li><code>onDestroy</code> runs when <code>destroy()</code> is called — before children are destroyed and the root is removed.</li>
+          <li>Wizz removes every listener it attached through <code>on:</code>. Listeners you add to <code>window</code> or <code>document</code> are yours to remove.</li>
+          <li>Wizz owns the DOM it creates: do not reorder, remove, or replace its nodes while mounted.</li>
+        </ul>
+        <p>Outside the router, every compiled module can be mounted by hand:</p>
+        <CodeBlock code={mountSource} lang="js" title="main.js" />
+
+        <h2 id="rules" class="reveal">Rules the compiler enforces</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Rule</th><th>Instead</th><th>Code</th></tr></thead>
+            <tbody>
+              <tr><td>A template needs a root element</td><td>Wrap content in one native element</td><td><code>WIZZ-G001</code></td></tr>
+              <tr><td>One <code>{"<wizz:head>"}</code> / <code>{"<wizz:style>"}</code></td><td>Merge the blocks</td><td><code>WIZZ-P013</code> / <code>P014</code></td></tr>
+              <tr><td>No plain <code>{"<style>"}</code></td><td>Use <code>{"<wizz:style>"}</code></td><td><code>WIZZ-P020</code></td></tr>
+              <tr><td>No children on component tags</td><td>Pass props</td><td><code>WIZZ-G008</code></td></tr>
+              <tr><td>No <code>on:</code> on component tags</td><td>Pass a callback prop</td><td><code>WIZZ-G011</code></td></tr>
+              <tr><td>Component tags inside a native element</td><td>Wrap the tag</td><td><code>WIZZ-G010</code></td></tr>
+              <tr><td>Props are read-only</td><td>Copy into a local <code>let</code></td><td><code>WIZZ-G015</code></td></tr>
+              <tr><td>No calls or ternaries in <code>{"{...}"}</code></td><td>Compute in the script</td><td><code>WIZZ-P033</code></td></tr>
+              <tr><td>{"{#each}"} inside a native element</td><td>Wrap the block</td><td><code>WIZZ-G002</code></td></tr>
+              <tr><td>One root element per {"{#each}"} body</td><td>Wrap the row</td><td><code>WIZZ-G003</code></td></tr>
+              <tr><td>No components / <code>on:</code> inside {"{#each}"}</td><td>Native markup + delegation</td><td><code>WIZZ-G004</code> / <code>G006</code></td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p>A few behaviors compile cleanly but are worth knowing:</p>
+        <ul>
+          <li><strong>{"{#if}"} is chosen at mount.</strong> Toggle visibility of reactive UI with a bound class instead, and keep dynamic bindings out of branches that may not be taken.</li>
+          <li><strong>Avoid empty-string text interpolations</strong> in server-rendered components: an empty text node does not survive HTML parsing, so hydration falls back to a client render. Initialize display strings to something visible.</li>
+          <li><strong>Keep scripts LF-only.</strong> The hydration walk compares template whitespace exactly, and the browser normalizes CRLF.</li>
+          <li><strong>Use <code>const</code> for locals inside helper functions.</strong> The state scanner treats <code>let</code> declarations as component state.</li>
+        </ul>
+      </article>
+      <PageNav prevHref="/docs/architecture" prevLabel="Architecture & Philosophy" nextHref="/docs/reactivity" nextLabel="State & Reactivity" />
+    </main>
+    <Toc items={toc} />
+  </div>
+</div>

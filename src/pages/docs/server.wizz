@@ -1,0 +1,207 @@
+<script>
+  import TopNav from "../../components/TopNav.wizz";
+  import Sidebar from "../../components/Sidebar.wizz";
+  import Toc from "../../components/Toc.wizz";
+  import CodeBlock from "../../components/CodeBlock.wizz";
+  import Callout from "../../components/Callout.wizz";
+  import PageNav from "../../components/PageNav.wizz";
+  import ApiDemo from "../../components/ApiDemo.wizz";
+
+  const toc = [
+    { id: "api-routes", label: "Server API routes" },
+    { id: "request", label: "The request context" },
+    { id: "responses", label: "Return values" },
+    { id: "api-demo", label: "Live: call a handler", depth: 3 },
+    { id: "secrets", label: "Secrets & .env.server" },
+    { id: "ssr", label: "Server rendering" },
+    { id: "eligibility", label: "What can server-render", depth: 3 },
+    { id: "deploy", label: "Deploy with the node adapter" }
+  ];
+
+  const routesText = `src/server/api/health.js          ->  /api/health
+src/server/api/index.js           ->  /api
+src/server/api/users/index.js     ->  /api/users
+src/server/api/users/search.js    ->  /api/users/search
+src/server/api/_db.js             ->  (private helper: importable, never routed)`;
+
+  const greetSource = `// src/server/api/greet.js → /api/greet  (powers the sandbox below)
+export default async function handler(request) {
+  if (request.method !== "GET") {
+    return { status: 405, headers: { allow: "GET" }, body: { error: "Method not allowed" } };
+  }
+
+  const name = (request.query.get("name") ?? "").trim().slice(0, 40) || "friend";
+
+  return {
+    message: "Hello, " + name + "!",
+    method: request.method,
+    path: request.path,
+    runtime: "Node " + process.version,
+    renderedAt: new Date().toISOString()
+  };
+}`;
+
+  const contextText = `request = Object.freeze({
+  method,    // "GET" | "POST" | ...
+  path,      // decoded pathname, e.g. "/api/submit-form"
+  query,     // URLSearchParams
+  headers,   // plain object, lowercased names
+  body,      // raw body text, or null when empty
+  json()     // async: parses body; malformed JSON answers 400
+})`;
+
+  const submitSource = `// src/server/api/submit-form.js → /api/submit-form
+export default async function handler(request) {
+  const payload = await request.json();   // 400 on malformed input
+  const response = await fetch("https://third-party.example/v1/submit", {
+    method: "POST",
+    headers: { Authorization: "Bearer " + process.env.THIRD_PARTY_KEY },
+    body: JSON.stringify(payload)
+  });
+  return { status: response.status, body: await response.json() };
+}`;
+
+  const clientFetch = `<script>
+  let result = "Not sent yet";
+
+  async function send(event) {
+    event.preventDefault();
+    const response = await fetch("/api/submit-form", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ email: event.target.email.value })
+    });
+    result = response.ok ? "Sent!" : "Failed: " + response.status;
+  }
+<\/script>
+
+<form on:submit={send}>
+  <input name="email" type="email" required />
+  <button>Subscribe</button>
+  <p>{result}</p>
+</form>`;
+
+  const envText = `# .env.server — project root, gitignored. KEY=VALUE lines, # comments allowed.
+THIRD_PARTY_KEY=sk_live_...
+DATABASE_URL=postgres://...`;
+
+  const gitignoreText = `.env.server
+dist/`;
+
+  const deployCmd = `wizz build --adapter node
+node dist/server.mjs              # http://localhost:8080
+PORT=3000 node dist/server.mjs    # PORT is validated (0-65535)
+cd dist && node server.mjs        # dist resolves from the host's own location`;
+
+  const jsonEnvelope = `{
+  "format": "wizz-build-diagnostics@1",
+  "ok": true,
+  "diagnostics": [],
+  "files": [{ "file": "App.wizz", "serverRenderable": true }],
+  "adapter": "node"
+}`;
+
+  const noteText = `Note: server rendering skipped for src/App.wizz — Server rendering does not support
+component tags; <Counter> cannot be rendered server-side at src/App.wizz:3:16.
+Underlying reason: ... at src/components/Counter.wizz:3:15.
+Serving the client build only.`;
+</script>
+
+<wizz:head>
+  <title>Server APIs & SSR — Wizz.js Docs</title>
+  <meta name="description" content="Server API handlers in src/server/api, the frozen request context, response shapes, .env.server secrets, server rendering eligibility, and the node adapter.">
+</wizz:head>
+
+<div class="site">
+  <TopNav section="docs" showMenu={true} />
+  <div class="doc-shell">
+    <Sidebar current="/docs/server" />
+    <main id="main" class="doc-main glass">
+      <article class="prose">
+        <header>
+          <p class="eyebrow rise" style="--i: 0">Core Concepts</p>
+          <h1 class="rise" style="--i: 1">Server APIs & SSR</h1>
+          <p class="lead rise" style="--i: 2">Everything in a <code>.wizz</code> script ships to the browser. Code that must stay private — API keys, database calls, third-party requests — lives in <code>src/server/api/*.js</code> and runs on the server behind a same-origin <code>/api/*</code> route.</p>
+        </header>
+
+        <h2 id="api-routes" class="reveal">Server API routes</h2>
+        <p>Each file's default export handles its route. Routes mirror pages: <code>index.js</code> names the directory, nested directories nest the path, and everything lowercases.</p>
+        <CodeBlock code={routesText} lang="text" title="file → route" />
+        <CodeBlock code={greetSource} lang="js" title="src/server/api/greet.js" />
+        <ul>
+          <li>Files and directories starting with <code>_</code> are importable helpers, never routes.</li>
+          <li>Duplicate routes fail the build naming both files; <code>/api</code> and <code>/server</code> are reserved namespaces for pages.</li>
+          <li><strong>Handler edits apply on the next request</strong> — no rebuild. Relative imports must stay inside <code>src/server/</code>.</li>
+          <li>Handler source is never served as a static file, in development or production.</li>
+        </ul>
+
+        <h2 id="request" class="reveal">The request context</h2>
+        <p>Handlers receive a frozen plain object rather than Node's <code>req</code>/<code>res</code>, so they stay portable across hosts.</p>
+        <CodeBlock code={contextText} lang="js" title="handler(request)" />
+        <p>Request bodies are capped at <strong>1 MB</strong>; larger requests answer <code>413</code>.</p>
+
+        <h2 id="responses" class="reveal">Return values</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Handler returns</th><th>Response</th></tr></thead>
+            <tbody>
+              <tr><td>A plain value (object, array, number…)</td><td><code>200</code> with a JSON body</td></tr>
+              <tr><td>A string</td><td><code>200</code> plain text</td></tr>
+              <tr><td><code>undefined</code></td><td><code>204</code> no content</td></tr>
+              <tr><td><code>{"{ status, headers, body }"}</code></td><td>Full control over the response</td></tr>
+              <tr><td>A thrown error (or a module without a default function)</td><td>Fixed <code>500 {'{"error":"Internal server error"}'}</code> — details go to the server log only</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <Callout kind="tip" title="Errors are one-way by design" body="Because the client only ever sees the fixed 500 body, an error message that happens to quote a secret can never leak through a response." />
+
+        <h3 id="api-demo" class="reveal">Live: call a handler</h3>
+        <p>This sandbox is a Wizz component fetching <code>/api/greet</code> from this site's own server. The JSON is produced by the handler above.</p>
+        <div class="sandbox">
+          <p class="sandbox-label">Live · ApiDemo.wizz → /api/greet</p>
+          <ApiDemo />
+        </div>
+        <p>Calling a handler from a component is an ordinary <code>fetch</code>:</p>
+        <div class="grid-2">
+          <CodeBlock code={submitSource} lang="js" title="src/server/api/submit-form.js" />
+          <CodeBlock code={clientFetch} lang="wizz" title="Subscribe.wizz" />
+        </div>
+
+        <h2 id="secrets" class="reveal">Secrets & .env.server</h2>
+        <p>Keep secrets in a <strong>gitignored <code>.env.server</code> at the project root</strong> — never in <code>src/</code> or a <code>.wizz</code> file. The dev server loads it into <code>process.env</code> before the first request; handlers read keys at request time.</p>
+        <div class="grid-2">
+          <CodeBlock code={envText} lang="bash" title=".env.server" />
+          <CodeBlock code={gitignoreText} lang="text" title=".gitignore" />
+        </div>
+        <ul>
+          <li>Real environment variables always win over file entries.</li>
+          <li>The file is never copied into build output or served.</li>
+          <li>The node adapter reads <code>.env.server</code> from the directory it is started in; most platforms inject environment variables directly.</li>
+        </ul>
+
+        <h2 id="ssr" class="reveal">Server rendering</h2>
+        <p>Pages server-render by default. <code>wizz dev</code> and the node host match each document request against the manifest, call the page's <code>renderComponent()</code>, put the HTML inside <code>#app</code>, place the state script beside it, and inject the head between <code>wizz:head-start</code> / <code>wizz:head-end</code> comment markers. The router then hydrates instead of re-rendering.</p>
+        <Callout kind="warn" title="Browser globals belong in onMount" body="Author scripts run on the server too. A top-level read of document, window, or localStorage throws during renderComponent(), and that route falls back to the client build." />
+
+        <h3 id="eligibility" class="reveal">What can server-render</h3>
+        <p>Everything with a deterministic first render: static markup, text and attribute expressions, props, the initially-taken {"{#if}"} branch, {"{#each}"} lists, and imported components — recursively. Eligibility is computed bottom-up over the import graph; a page whose child fails the gate stays client-only, and the build explains why:</p>
+        <CodeBlock code={noteText} lang="text" title="build output" />
+        <p>Event handlers and lifecycle hooks are client-only. Child component state rides in the page's state under the reserved <code>__wizz</code> key, so reactive names may not start with <code>__wizz</code>.</p>
+
+        <h2 id="deploy" class="reveal">Deploy with the node adapter</h2>
+        <p><code>wizz build --adapter node</code> adds <code>dist/server.mjs</code>: a standalone SSR + API host that imports only Node built-ins and the build's own artifacts.</p>
+        <CodeBlock code={deployCmd} lang="bash" title="terminal" />
+        <ul>
+          <li>Serves traversal-guarded static files from <code>dist/</code> — encoded dots, backslashes, drive letters, NUL bytes, and symlinks pointing outside are all contained.</li>
+          <li>Server-renders manifest routes, runs <code>/api/**</code> handlers with the same context and return shapes as <code>wizz dev</code>, and answers unmatched API paths with <code>404</code> JSON.</li>
+          <li>Falls back to the document shell for other extensionless paths, and never serves <code>/server/**</code>.</li>
+        </ul>
+        <p>With <code>--json</code>, the build envelope records the adapter:</p>
+        <CodeBlock code={jsonEnvelope} lang="json" title="wizz build --adapter node --json" />
+        <Callout kind="note" title="Not an application server" body="The host has no sessions, persistence, or middleware. Put it behind production hosting that supplies TLS, security headers, access control, and a Content Security Policy that allows the inline state script (for example with a nonce)." />
+      </article>
+      <PageNav prevHref="/docs/routing" prevLabel="Routing & Navigation" nextHref="/docs/api" nextLabel="API Reference" />
+    </main>
+    <Toc items={toc} />
+  </div>
+</div>

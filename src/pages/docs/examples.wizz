@@ -1,0 +1,224 @@
+<script>
+  import TopNav from "../../components/TopNav.wizz";
+  import Sidebar from "../../components/Sidebar.wizz";
+  import Toc from "../../components/Toc.wizz";
+  import CodeBlock from "../../components/CodeBlock.wizz";
+  import PageNav from "../../components/PageNav.wizz";
+  import Counter from "../../components/Counter.wizz";
+  import TodoDemo from "../../components/TodoDemo.wizz";
+  import PropsDemo from "../../components/PropsDemo.wizz";
+  import LiveClock from "../../components/LiveClock.wizz";
+  import ApiDemo from "../../components/ApiDemo.wizz";
+
+  const toc = [
+    { id: "counter", label: "Persisted counter" },
+    { id: "todo", label: "Keyed todo list" },
+    { id: "props", label: "Parent → child props" },
+    { id: "clock", label: "Lifecycle clock" },
+    { id: "fetch", label: "Server API call" },
+    { id: "this-site", label: "This site" }
+  ];
+
+  const counterSource = `<script>
+  export let label = "Live counter";
+  let count = persist("wizz_docs_counter", 0);
+  let bump = "value";
+  let flip = false;
+
+  function increment() {
+    count += 1;
+    flip = !flip;
+    bump = flip ? "value bump-a" : "value bump-b";   // replay the animation
+  }
+<\/script>
+
+<div class="counter">
+  <p class="label">{label}</p>
+  <output class={bump} aria-live="polite">{count}</output>
+  <button type="button" on:click={increment} aria-label="Increment">+</button>
+</div>`;
+
+  const todoSource = `<script>
+  let todos = persist("wizz_docs_todos", []);
+  let filter = "all";
+
+  function row(item) {
+    return { ...item, rowClass: item.done ? "item is-done" : "item" };
+  }
+
+  function handleListClick(event) {
+    const node = event.target.closest("[data-id]");
+    if (!node) return;
+    const id = Number(node.dataset.id);
+    if (event.target.closest("[data-action='remove']")) {
+      todos = todos.filter((item) => item.id !== id);
+    } else {
+      todos = todos.map((item) => (item.id === id ? row({ ...item, done: !item.done }) : item));
+    }
+  }
+<\/script>
+
+<div class="todo" data-filter={filter}>
+  <ul on:click={handleListClick}>{#each todos as item (item.id)}<li class={item.rowClass} data-id={item.id}><span>{item.title}</span><button data-action="remove">×</button></li>{/each}</ul>
+</div>
+
+<wizz:style>
+  [data-filter="active"] .is-done { display: none; }
+</wizz:style>`;
+
+  const meterSource = `<script>
+  // Meter.wizz — a pure view: every value is a prop.
+  export let label = "Meter";
+  export let value = 0;
+  export let barStyle = "";
+  export let meterClass = "meter calm";
+<\/script>
+
+<div class={meterClass}>
+  <span>{label}</span><span>{value}%</span>
+  <div class="rail"><span class="fill" style={barStyle}></span></div>
+</div>`;
+
+  const clockSource = `<script>
+  let time = "--:--:--";
+  let ticks = 0;
+  let timerId = null;
+
+  function tick() {
+    time = new Date().toLocaleTimeString();
+    ticks += 1;
+  }
+
+  onMount(() => {
+    tick();
+    timerId = setInterval(tick, 1000);
+  });
+
+  onDestroy(() => {
+    clearInterval(timerId);
+  });
+<\/script>
+
+<div class="clock">
+  <time>{time}</time>
+  <p>{ticks} ticks</p>
+</div>`;
+
+  const fetchSource = `<script>
+  let name = "Ada";
+  let output = "Press the button";
+  let controller = null;
+
+  async function callApi(event) {
+    event.preventDefault();
+    controller?.abort();
+    controller = new AbortController();
+    const response = await fetch("/api/greet?name=" + encodeURIComponent(name), {
+      signal: controller.signal
+    });
+    output = JSON.stringify(await response.json(), null, 2);
+  }
+
+  onDestroy(() => {
+    controller?.abort();
+  });
+<\/script>
+
+<form on:submit={callApi}>
+  <button type="submit">Call /api/greet</button>
+  <pre>{output}</pre>
+</form>`;
+
+  const siteTree = `src/
+├── App.wizz                    landing page: hero, live counter, feature grid
+├── components/
+│   ├── TopNav.wizz             capsule dock, Ctrl+K spotlight (<dialog>), theme, persist()
+│   ├── Sidebar.wizz            <details> groups, view-transition pill
+│   ├── Toc.wizz                scroll spy + sliding indicator
+│   ├── CodeBlock.wizz          zero-dependency highlighter + copy feedback
+│   ├── ApiEntry.wizz           reference entries (params table + example)
+│   ├── Callout.wizz · PageNav.wizz
+│   └── Counter · TodoDemo · PropsDemo · Meter · LiveClock · ApiDemo
+├── pages/docs/*.wizz           one routed page per topic
+└── server/api/greet.js         the handler behind the fetch demo`;
+</script>
+
+<wizz:head>
+  <title>Live Examples — Wizz.js Docs</title>
+  <meta name="description" content="Runnable Wizz.js examples: a persisted counter, a keyed todo list, parent-to-child props, lifecycle hooks, and a server API call.">
+</wizz:head>
+
+<div class="site">
+  <TopNav section="examples" showMenu={true} />
+  <div class="doc-shell">
+    <Sidebar current="/docs/examples" />
+    <main id="main" class="doc-main glass">
+      <article class="prose">
+        <header>
+          <p class="eyebrow rise" style="--i: 0">Examples</p>
+          <h1 class="rise" style="--i: 1">Live Examples</h1>
+          <p class="lead rise" style="--i: 2">Every sandbox on this page is a real Wizz component, server-rendered with the page and hydrated in your browser. The source beside each one is what runs.</p>
+        </header>
+
+        <h2 id="counter" class="reveal">Persisted counter</h2>
+        <p><code>persist()</code> state with a replaying animation. Open this page in two tabs and click in one.</p>
+        <div class="example-grid">
+          <div class="sandbox">
+            <p class="sandbox-label">Live · Counter.wizz</p>
+            <Counter label="Synced across tabs" />
+          </div>
+          <CodeBlock code={counterSource} lang="wizz" title="Counter.wizz (excerpt)" />
+        </div>
+
+        <h2 id="todo" class="reveal">Keyed todo list</h2>
+        <p>Keyed <code>{"{#each}"}</code>, event delegation, a submit handler, CSS-driven filters, and persisted state.</p>
+        <div class="sandbox">
+          <p class="sandbox-label">Live · TodoDemo.wizz</p>
+          <TodoDemo />
+        </div>
+        <CodeBlock code={todoSource} lang="wizz" title="TodoDemo.wizz (excerpt)" />
+
+        <h2 id="props" class="reveal">Parent → child props</h2>
+        <p>The parent owns state and precomputes every value; the child only renders. Props flow through <code>setProps()</code> — the child is never remounted.</p>
+        <div class="sandbox">
+          <p class="sandbox-label">Live · PropsDemo.wizz → Meter.wizz</p>
+          <PropsDemo />
+        </div>
+        <CodeBlock code={meterSource} lang="wizz" title="Meter.wizz" />
+
+        <h2 id="clock" class="reveal">Lifecycle clock</h2>
+        <p><code>onMount</code> starts an interval after hydration; <code>onDestroy</code> clears it when the page is torn down. The server renders the placeholder.</p>
+        <div class="example-grid">
+          <div class="sandbox">
+            <p class="sandbox-label">Live · LiveClock.wizz</p>
+            <LiveClock />
+          </div>
+          <CodeBlock code={clockSource} lang="wizz" title="LiveClock.wizz" />
+        </div>
+
+        <h2 id="fetch" class="reveal">Server API call</h2>
+        <p>A component calling a handler in <code>src/server/api/</code>, with an <code>AbortController</code> released on destroy.</p>
+        <div class="sandbox">
+          <p class="sandbox-label">Live · ApiDemo.wizz → /api/greet</p>
+          <ApiDemo />
+        </div>
+        <CodeBlock code={fetchSource} lang="wizz" title="ApiDemo.wizz (excerpt)" />
+
+        <h2 id="this-site" class="reveal">This site</h2>
+        <p>The documentation itself is the largest example: 24 components and pages, server-rendered and hydrated, with no runtime dependency beyond the Wizz runtime the build copies into <code>dist/</code>.</p>
+        <CodeBlock code={siteTree} lang="text" title="wizz-documentation" />
+      </article>
+      <PageNav prevHref="/docs/mcp" prevLabel="MCP Server" nextHref="/" nextLabel="Back to overview" />
+    </main>
+    <Toc items={toc} />
+  </div>
+</div>
+
+<wizz:style>
+  .example-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+    gap: 1rem;
+    align-items: start;
+  }
+</wizz:style>

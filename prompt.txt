@@ -1,0 +1,42 @@
+Read `CLAUDE.md` first to understand the WizzJS framework, project structure, and development conventions.
+
+Before writing any code, load and follow the instructions in both the **Glassmorphism** skill and the **Animation** skill.
+
+### Goal
+Design and build a comprehensive, modern, interactive documentation website for **WizzJS** (our zero-dependency JavaScript framework), built entirely with WizzJS itself as a showcase of its capabilities.
+The WizzJS codebase can be located at either: 
+- /mnt/c/Users/dunca/Develop/wizzjs
+- https://github.com/duncantidd/wizz.js
+
+### Visual & UI Requirements (Glassmorphism + Animation Skills)
+1. **Glassmorphic Layout System:**
+   - Create a multi-layered atmospheric background (subtle animated mesh gradients / ambient glow orbs in dark mode with a crisp light-mode alternative) that gives translucent surfaces genuine depth to refract against.
+   - Build a sticky glassmorphic top navigation bar (`backdrop-filter: blur(...)`, subtle 1px specular border highlights, layered shadows) with brand identity, quick-jump search trigger, theme toggle, and GitHub link.
+   - Build a collapsible glassmorphic left sidebar for hierarchical documentation navigation (Getting Started, Core Concepts, Reactivity/State, Routing, Components, API Reference, Examples) and a floating right-hand "On This Page" table of contents with active-section scroll spy.
+   - Ensure strict contrast and readability: keep body copy and code blocks high-contrast and legible while using frosted glass surfaces for cards, callouts, navigation chrome, and interactive sandboxes.
+
+2. **Motion & Micro-interactions (Animation Skill):**
+   - Implement smooth, purposeful entrance choreography (staggered fade + subtle upward translate) for hero elements, feature cards, and documentation sections.
+   - Add fluid route/page transitions when navigating between documentation topics so the site feels like a native app.
+   - Add tactile micro-interactions: hover light-sheen/border-glow tracking on glass cards, animated active-indicator pills in the sidebar and TOC, and smooth copy-to-clipboard feedback on code blocks.
+   - Respect `prefers-reduced-motion: reduce` across all animations.
+
+### Content & Documentation Architecture
+1. **Showcase Landing Hero / Overview:**
+   - Hero section explaining what WizzJS is (zero-dependency, lightweight, fast), quick install/bootstrap snippet, and interactive live counter/component demo running natively on WizzJS right in the hero.
+2. **In-Depth Documentation Sections:**
+   - **Getting Started:** Installation, project structure, bootstrapping an app.
+   - **Core Architecture & Philosophy:** Why zero dependencies, how WizzJS works under the hood.
+   - **Components & Templating:** Creating components, props, lifecycle, and DOM rendering.
+   - **State & Reactivity:** Managing state, reactive updates, and event handling.
+   - **Routing & Navigation:** Client-side routing, params, and navigation guards/links.
+   - **Full API Reference:** Detailed signatures, parameters, return values, and runnable code examples for every exported WizzJS utility/function.
+   - **MCP:** Details of how the MCP works and its available tools.
+   - ** CLI:** Details of the CLI
+
+### Execution Steps
+1. Audit the existing codebase to inventory all WizzJS core features, exports, and current pages/components.
+2. Propose a brief component and routing architecture for the documentation site.
+3. Implement the design system (CSS variables, glassmorphism tokens, animation keyframes/utilities) and layout shell.
+4. Build out the interactive documentation pages with real, accurate WizzJS code examples.
+5. Verify everything runs cleanly with zero external runtime dependencies.

@@ -1,0 +1,218 @@
+<script>
+  import TopNav from "../../components/TopNav.wizz";
+  import Sidebar from "../../components/Sidebar.wizz";
+  import Toc from "../../components/Toc.wizz";
+  import CodeBlock from "../../components/CodeBlock.wizz";
+  import Callout from "../../components/Callout.wizz";
+  import PageNav from "../../components/PageNav.wizz";
+
+  const toc = [
+    { id: "file-routes", label: "File-system routes" },
+    { id: "manifest", label: "The route manifest" },
+    { id: "router", label: "How the router works" },
+    { id: "navigation", label: "Navigation & links" },
+    { id: "transitions", label: "Page transitions" },
+    { id: "params", label: "Parameters & query strings" },
+    { id: "guards", label: "Guards & redirects" },
+    { id: "not-found", label: "Not found" }
+  ];
+
+  const routesText = `src/App.wizz                   ->  /
+src/pages/index.wizz           ->  /        (only one of these two may exist)
+src/pages/Home.wizz            ->  /home
+src/pages/Admin/Users.wizz     ->  /admin/users
+src/pages/Docs/index.wizz      ->  /docs
+src/pages/docs/getting-started.wizz -> /docs/getting-started`;
+
+  const manifestSource = `// dist/runtime/routes.js — generated on every build. Edits will be overwritten.
+export const pageModules = [
+  {
+    "filePath": "pages/docs/routing.wizz",
+    "modulePath": "../pages/docs/routing.js",
+    "routePath": "/docs/routing",
+    "serverModulePath": "../pages/docs/routing.server.js",
+    "hydratableModulePath": "../pages/docs/routing.hydrate.js"
+  }
+];`;
+
+  const mainSource = `// dist/runtime/main.js (copied from the Wizz runtime)
+import { createRouter } from "./router.js";
+import { pageModules } from "./routes.js";
+
+const target = document.getElementById("app");
+
+const routes = Object.fromEntries(
+  pageModules.map(({ routePath, modulePath }) => [routePath, () => import(modulePath)])
+);
+const hydratableRoutes = Object.fromEntries(
+  pageModules
+    .filter(({ hydratableModulePath }) => hydratableModulePath)
+    .map(({ routePath, hydratableModulePath }) => [routePath, () => import(hydratableModulePath)])
+);
+
+const router = createRouter({ routes, hydratableRoutes, target, window, document });
+void router.render();`;
+
+  const linkSource = `<nav class="docs-nav">
+  <a href="/docs/getting-started">Getting started</a>
+  <a href="/docs/routing">Routing</a>
+</nav>`;
+
+  const navigateSource = `import { createRouter } from "/runtime/router.js";
+
+const router = createRouter({ routes, hydratableRoutes, target, window, document });
+await router.render();
+
+// pushState + render: destroys the current page, mounts the next one.
+await router.navigate("/docs/api");
+
+// Browser Back/Forward re-render through the router's popstate listener.
+router.destroy();   // removes the listener and the current page`;
+
+  const transitionCss = `/* App.css — opt every same-origin navigation into a view transition */
+@view-transition {
+  navigation: auto;
+}
+
+/* Persistent chrome keeps its identity across documents */
+.topnav  { view-transition-name: topnav; }
+.sidebar { view-transition-name: sidebar; }
+.article { view-transition-name: doc-main; }
+
+::view-transition-old(doc-main) { animation: page-out 200ms ease both; }
+::view-transition-new(doc-main) { animation: page-in 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+@keyframes page-out { to { opacity: 0; transform: translateY(-10px); } }
+@keyframes page-in { from { opacity: 0; transform: translateY(18px); } }
+
+@media (prefers-reduced-motion: reduce) {
+  @view-transition { navigation: none; }
+}`;
+
+  const pillCss = `/* Only the active link's pill carries the name, so the browser
+   morphs it from the old page's row to the new page's row. */
+.is-active .nav-pill {
+  view-transition-name: nav-pill;
+}`;
+
+  const querySource = `<script>
+  let userId = "";
+  let tab = "overview";
+
+  // The URL is a browser global: read it after mount so the server render
+  // and the hydration walk agree on the first frame.
+  onMount(() => {
+    const params = new URLSearchParams(document.location.search);
+    userId = params.get("id") ?? "";
+    tab = params.get("tab") ?? "overview";
+  });
+<\/script>
+
+<main>
+  <h1>User {userId}</h1>
+  <p>Tab: {tab}</p>
+</main>`;
+
+  const guardSource = `<script>
+  let status = "Checking your session…";
+
+  onMount(async () => {
+    const response = await fetch("/api/session");
+    if (response.status === 401) {
+      // replace() keeps the guarded page out of history.
+      window.location.replace("/login?next=" + encodeURIComponent(location.pathname));
+      return;
+    }
+    const session = await response.json();
+    status = "Signed in as " + session.name;
+  });
+<\/script>
+
+<main class="dashboard">
+  <p>{status}</p>
+</main>`;
+
+  const sessionHandler = `// src/server/api/session.js → /api/session
+export default async function handler(request) {
+  const cookie = request.headers.cookie ?? "";
+  const token = /(?:^|; )session=([^;]+)/.exec(cookie)?.[1];
+  if (!token) {
+    return { status: 401, body: { error: "Not signed in" } };
+  }
+  return { name: await lookupUser(token) };
+}`;
+</script>
+
+<wizz:head>
+  <title>Routing & Navigation — Wizz.js Docs</title>
+  <meta name="description" content="File-system routes, the generated route manifest, the Wizz router, links, view transitions, query parameters, and guard patterns.">
+</wizz:head>
+
+<div class="site">
+  <TopNav section="docs" showMenu={true} />
+  <div class="doc-shell">
+    <Sidebar current="/docs/routing" />
+    <main id="main" class="doc-main glass">
+      <article class="prose">
+        <header>
+          <p class="eyebrow rise" style="--i: 0">Core Concepts</p>
+          <h1 class="rise" style="--i: 1">Routing & Navigation</h1>
+          <p class="lead rise" style="--i: 2">Routes come from the file system. Every build generates a manifest; a small runtime router matches the exact pathname, hydrates server-rendered markup on first load, and lazily imports only the page you are on.</p>
+        </header>
+
+        <h2 id="file-routes" class="reveal">File-system routes</h2>
+        <p><code>src/App.wizz</code> and every <code>.wizz</code> file below <code>src/pages</code> becomes a route. Paths are lowercased; <code>index.wizz</code> names its directory.</p>
+        <CodeBlock code={routesText} lang="text" title="file → route" />
+        <ul>
+          <li><strong>Collisions fail the build</strong>, naming both files — including <code>App.wizz</code> vs. <code>pages/index.wizz</code>.</li>
+          <li><strong>Reserved prefixes</strong>: <code>/api</code> (server handlers), <code>/runtime</code> (Wizz runtime files), and <code>/server</code> (handler output) cannot be pages.</li>
+          <li>Adding, renaming, or removing a page takes effect on the next build or <code>wizz dev</code> rebuild.</li>
+        </ul>
+
+        <h2 id="manifest" class="reveal">The route manifest</h2>
+        <p>The build writes <code>dist/runtime/routes.js</code>. Pages that are server-renderable also advertise their server and hydratable modules; ineligible pages carry <code>null</code> there and are served client-only.</p>
+        <CodeBlock code={manifestSource} lang="js" title="dist/runtime/routes.js" />
+        <p>Never edit <code>main.js</code> to add a route — the entry module builds lazy loaders from the manifest:</p>
+        <CodeBlock code={mainSource} lang="js" title="dist/runtime/main.js" />
+
+        <h2 id="router" class="reveal">How the router works</h2>
+        <ol>
+          <li><strong>Match</strong> <code>window.location.pathname</code> exactly against the manifest.</li>
+          <li><strong>Hydrate on first render</strong>: if the document carries an <code>application/wizz-state</code> script and the route has a hydratable build, adopt the server markup. Otherwise drop it and mount fresh.</li>
+          <li><strong>Mount</strong> later renders fresh, destroying the previous page first.</li>
+          <li><strong>Guard against races</strong>: each render takes a sequence token, and a render whose import resolves after a newer one started is abandoned.</li>
+        </ol>
+        <Callout kind="tip" title="Only the current route loads" body="Each page is a separate dynamic import. Visiting /docs/routing never downloads the API reference page's module." />
+
+        <h2 id="navigation" class="reveal">Navigation & links</h2>
+        <p>Use ordinary anchors. With the standard entry, a link is a document navigation: the server renders the next page, the browser parses it, and the router hydrates — fast, accessible, and working before any JavaScript arrives.</p>
+        <CodeBlock code={linkSource} lang="wizz" title="Nav.wizz" />
+        <p>For in-place client navigation, the router object exposes <code>navigate(pathname)</code>, which calls <code>history.pushState()</code> and re-renders; Back and Forward re-render through <code>popstate</code>. The default <code>main.js</code> keeps its router private, so this applies to applications that create their own router:</p>
+        <CodeBlock code={navigateSource} lang="js" title="custom entry" />
+
+        <h2 id="transitions" class="reveal">Page transitions</h2>
+        <p>Because links are document navigations, the browser's <strong>cross-document View Transitions</strong> give app-like page changes with no JavaScript at all. This site does exactly that: the top bar and sidebar keep their identity, the article slides and fades, and the sidebar's active pill glides to its new row.</p>
+        <CodeBlock code={transitionCss} lang="text" title="App.css" />
+        <CodeBlock code={pillCss} lang="text" title="Sidebar.wizz — wizz:style" />
+        <Callout kind="note" title="Progressive enhancement" body="Browsers without cross-document view transitions simply navigate normally. Server rendering means the next page still arrives fully formed." />
+
+        <h2 id="params" class="reveal">Parameters & query strings</h2>
+        <p>Route matching is exact; there are no dynamic segments like <code>/users/:id</code>. Carry parameters in the query string and read them after mount:</p>
+        <CodeBlock code={querySource} lang="wizz" title="src/pages/User.wizz → /user?id=42" />
+
+        <h2 id="guards" class="reveal">Guards & redirects</h2>
+        <p>Wizz has no router-level guard hook. Protect data on the server — where it can actually be enforced — and redirect from the page after mount:</p>
+        <div class="grid-2">
+          <CodeBlock code={guardSource} lang="wizz" title="src/pages/Dashboard.wizz" />
+          <CodeBlock code={sessionHandler} lang="js" title="src/server/api/session.js" />
+        </div>
+        <Callout kind="warn" title="Client checks are UX, not security" body="Anything a .wizz script does runs in the browser. The API handler must refuse unauthorized requests itself; the page redirect only spares users a dead end." />
+
+        <h2 id="not-found" class="reveal">Not found</h2>
+        <p>An unmatched path renders a bare <code>{"<main>Not found</main>"}</code> into <code>#app</code>, and any server markup delivered for it is removed first. Unmatched <code>/api/*</code> paths answer <code>404</code> JSON — never the document shell.</p>
+      </article>
+      <PageNav prevHref="/docs/reactivity" prevLabel="State & Reactivity" nextHref="/docs/server" nextLabel="Server APIs & SSR" />
+    </main>
+    <Toc items={toc} />
+  </div>
+</div>

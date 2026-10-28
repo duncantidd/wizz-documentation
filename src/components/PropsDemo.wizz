@@ -1,0 +1,100 @@
+<script>
+  import Meter from "./Meter.wizz";
+
+  let level = 40;
+  let barStyle = "transform: scaleX(0.4)";
+  let meterClass = "meter calm";
+  let label = "CPU budget";
+  // The {updates} note renders before <Meter>: update lookups query by
+  // data-wizz-id from this root, and the child's own ids would otherwise
+  // match first in document order.
+  let updates = 0;
+
+  function handleLevel(event) {
+    level = Number(event.target.value);
+    barStyle = "transform: scaleX(" + level / 100 + ")";
+    meterClass = "meter " + (level > 80 ? "hot" : level > 55 ? "warm" : "calm");
+    updates += 1;
+  }
+
+  function handleLabel(event) {
+    label = event.target.value;
+    updates += 1;
+  }
+</script>
+
+<div class="props-demo">
+  <p class="note">Parent → child prop updates: <strong>{updates}</strong> · the child is never remounted.</p>
+  <div class="controls">
+    <label class="field">
+      <span>value prop</span>
+      <input type="range" min="0" max="100" value={level} on:input={handleLevel} />
+    </label>
+    <label class="field">
+      <span>label prop</span>
+      <input type="text" value={label} on:input={handleLabel} />
+    </label>
+  </div>
+  <div class="child">
+    <Meter label={label} value={level} barStyle={barStyle} meterClass={meterClass} />
+  </div>
+</div>
+
+<wizz:style>
+  .props-demo {
+    display: grid;
+    gap: 1.1rem;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+    gap: 1rem;
+  }
+
+  .field {
+    display: grid;
+    gap: 0.4rem;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+  }
+
+  input {
+    font: inherit;
+  }
+
+  .field input[type="text"] {
+    min-block-size: 2.5rem;
+    padding-inline: 0.85rem;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--hairline);
+    background-color: var(--well);
+    color: var(--ink);
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+  }
+
+  .field input[type="range"] {
+    accent-color: var(--accent);
+    min-block-size: 2.5rem;
+  }
+
+  .child {
+    padding: 1rem;
+    border-radius: var(--r-md);
+    border: 1px solid var(--hairline);
+    background-color: var(--hover-fill);
+  }
+
+  .note {
+    margin: 0;
+    color: var(--ink-3);
+    font-size: 0.85rem;
+  }
+
+  .note strong {
+    color: var(--ink);
+    font-family: var(--font-mono);
+  }
+</wizz:style>

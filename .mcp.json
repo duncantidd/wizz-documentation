@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "wizz": {
+      "type": "stdio",
+      "command": "wsl.exe",
+      "args": [
+        "-d",
+        "Ubuntu",
+        "--",
+        "/home/duncantidd/.local/bin/wizz",
+        "mcp",
+        "--root",
+        "/mnt/c/Users/dunca/Develop/wizz-documentation",
+        "--allow-write"
+      ]
+    }
+  }
+}

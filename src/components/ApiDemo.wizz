@@ -1,0 +1,156 @@
+<script>
+  let name = "Ada";
+  let status = "idle";
+  let statusClass = "status";
+  let output = "// Press “Call /api/greet” — the handler runs on the server.";
+  let latency = "—";
+  let controller = null;
+
+  function handleName(event) {
+    name = event.target.value;
+  }
+
+  async function callApi(event) {
+    event.preventDefault();
+    if (controller) controller.abort();
+    controller = new AbortController();
+    status = "loading…";
+    statusClass = "status is-loading";
+    const started = performance.now();
+    try {
+      const response = await fetch("/api/greet?name=" + encodeURIComponent(name), {
+        signal: controller.signal
+      });
+      const body = await response.json();
+      latency = Math.round(performance.now() - started) + " ms";
+      status = response.status + " " + (response.ok ? "OK" : "Error");
+      statusClass = response.ok ? "status is-ok" : "status is-error";
+      output = JSON.stringify(body, null, 2);
+    } catch (error) {
+      if (error.name === "AbortError") return;
+      status = "network error";
+      statusClass = "status is-error";
+      output = String(error.message);
+    }
+  }
+
+  onDestroy(() => {
+    if (controller) controller.abort();
+  });
+</script>
+
+<div class="api-demo">
+  <form class="row" on:submit={callApi}>
+    <label class="field">
+      <span class="visually-hidden">Name</span>
+      <span class="prefix">GET /api/greet?name=</span>
+      <input type="text" value={name} on:input={handleName} spellcheck="false" />
+    </label>
+    <button type="submit" class="send">Call /api/greet</button>
+  </form>
+  <div class="response">
+    <p class="meta"><span class={statusClass}>{status}</span><span class="latency">{latency}</span></p>
+    <pre>{output}</pre>
+  </div>
+</div>
+
+<wizz:style>
+  .api-demo {
+    display: grid;
+    gap: 0.9rem;
+  }
+
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .field {
+    display: flex;
+    flex: 1;
+    align-items: center;
+    min-inline-size: 16rem;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--hairline);
+    background-color: var(--well);
+    overflow: hidden;
+  }
+
+  .field:focus-within {
+    border-color: var(--focus-ring);
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--focus-ring) 22%, transparent);
+  }
+
+  .prefix {
+    padding-inline: 1rem 0.2rem;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    white-space: nowrap;
+  }
+
+  input {
+    flex: 1;
+    min-inline-size: 0;
+    min-block-size: 2.75rem;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    outline: none;
+  }
+
+  .send {
+    min-block-size: 2.75rem;
+    padding-inline: 1.2rem;
+    border: 0;
+    border-radius: var(--r-pill);
+    background: linear-gradient(135deg, oklch(0.88 0.12 210), oklch(0.8 0.14 292));
+    color: oklch(0.16 0.03 270);
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  .send:active {
+    transform: scale(0.96);
+  }
+
+  .response {
+    border-radius: var(--r-md);
+    border: 1px solid var(--hairline);
+    background-color: var(--well);
+    overflow: hidden;
+  }
+
+  .meta {
+    display: flex;
+    justify-content: space-between;
+    margin: 0;
+    padding: 0.5rem 0.9rem;
+    border-block-end: 1px solid var(--hairline);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    color: var(--ink-3);
+  }
+
+  .status {
+    font-weight: 700;
+  }
+
+  .is-loading { color: var(--amber); }
+  .is-ok { color: var(--mint); }
+  .is-error { color: var(--rose); }
+
+  pre {
+    margin: 0;
+    padding: 0.9rem 1rem;
+    max-block-size: 16rem;
+    overflow: auto;
+    color: var(--code-ink);
+    font-size: 0.84rem;
+    line-height: 1.6;
+  }
+</wizz:style>

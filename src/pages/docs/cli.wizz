@@ -1,0 +1,190 @@
+<script>
+  import TopNav from "../../components/TopNav.wizz";
+  import Sidebar from "../../components/Sidebar.wizz";
+  import Toc from "../../components/Toc.wizz";
+  import CodeBlock from "../../components/CodeBlock.wizz";
+  import Callout from "../../components/Callout.wizz";
+  import PageNav from "../../components/PageNav.wizz";
+
+  const toc = [
+    { id: "install", label: "Installing the CLI" },
+    { id: "commands", label: "Command summary" },
+    { id: "init", label: "wizz init" },
+    { id: "dev", label: "wizz dev" },
+    { id: "build", label: "wizz build" },
+    { id: "json", label: "--json diagnostics", depth: 3 },
+    { id: "adapter", label: "--adapter node", depth: 3 },
+    { id: "mcp-cmd", label: "wizz mcp" },
+    { id: "update", label: "wizz update" },
+    { id: "vscode", label: "wizz install-vscode-extension" },
+    { id: "version", label: "wizz --version" },
+    { id: "stability", label: "Stability & exit codes" }
+  ];
+
+  const usageText = `Usage:
+  wizz init [directory] [--force]   Scaffold a starter project
+  wizz build [input-directory] [output-directory] [--json] [--adapter <name>]
+  wizz dev [--port <n>] [--host <addr>]
+  wizz mcp [--root <dir>] [--allow-write]
+                                    Serve Wizz tooling to AI agents over MCP (stdio)
+  wizz update                       Update the managed installation to the latest release
+  wizz install-vscode-extension     Install the latest VS Code extension from a release
+  wizz --version                    Print the compiler and contract versions`;
+
+  const installCmd = `# Latest release (needs Node.js 18+, curl, tar)
+curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/install-cli.sh | bash
+
+# From a clone of the repository
+./scripts/install-cli.sh            # latest release
+./scripts/install-cli.sh --local    # the working tree (developing Wizz itself)
+./scripts/install-cli.sh ./wizz-1.17.0.tgz   # a specific tarball (path or URL)`;
+
+  const uninstallCmd = `rm -f "\${XDG_BIN_HOME:-$HOME/.local/bin}/wizz"
+rm -rf "\${XDG_DATA_HOME:-$HOME/.local/share}/wizz"`;
+
+  const initCmd = `wizz init              # scaffold into the current (empty) directory
+wizz init my-app       # scaffold into ./my-app
+wizz init my-app --force   # allow a non-empty directory; existing files are never overwritten`;
+
+  const devCmd = `wizz dev                       # build src → dist, serve http://127.0.0.1:3000, watch
+wizz dev --port 4321
+wizz dev --host 0.0.0.0        # opt out of loopback (remote development only)
+HOST=0.0.0.0 wizz dev          # same, from the environment (--host wins)`;
+
+  const buildCmd = `wizz build                     # src → dist
+wizz build components public   # explicit input and output (both, or neither)
+wizz build --json              # machine-readable diagnostics on stdout
+wizz build --adapter node      # also emit dist/server.mjs
+wizz build --adapter=node --json`;
+
+  const jsonFailure = `{
+  "format": "wizz-build-diagnostics@1",
+  "ok": false,
+  "diagnostics": [
+    {
+      "code": "WIZZ-P018",
+      "severity": "error",
+      "message": "Mismatched closing tag. Expected </p>, found </main> at Broken.wizz:1:16.",
+      "file": "Broken.wizz",
+      "line": 1,
+      "column": 16
+    }
+  ],
+  "files": [{ "file": "App.wizz", "serverRenderable": true }]
+}`;
+
+  const ciScript = `# CI gate: fail on any diagnostic and print the codes
+wizz build --json > build.json || true
+node -e '
+  const report = require("./build.json");
+  for (const d of report.diagnostics) console.log(d.code, d.file + ":" + d.line, d.message);
+  process.exit(report.ok ? 0 : 1);
+'`;
+
+  const adapterCmd = `wizz build --adapter node
+node dist/server.mjs              # http://localhost:8080
+PORT=3000 node dist/server.mjs`;
+
+  const mcpCmd = `wizz mcp                                   # root = current directory, read-only
+wizz mcp --root /path/to/project           # fix the project root
+wizz mcp --root /path/to/project --allow-write   # enable compile-gated writes`;
+
+  const updateCmd = `wizz update`;
+  const vscodeCmd = `wizz install-vscode-extension
+
+# without the CLI
+code --install-extension wizz-vscode-<version>.vsix`;
+  const versionCmd = `wizz --version
+# wizz 1.17.0 (compiler 1.17.0, syntax 1.4.1, output 1.8.2)`;
+</script>
+
+<wizz:head>
+  <title>CLI — Wizz.js Docs</title>
+  <meta name="description" content="The wizz command: init, dev, build (--json, --adapter node), mcp, update, install-vscode-extension, and --version.">
+</wizz:head>
+
+<div class="site">
+  <TopNav section="cli" showMenu={true} />
+  <div class="doc-shell">
+    <Sidebar current="/docs/cli" />
+    <main id="main" class="doc-main glass">
+      <article class="prose">
+        <header>
+          <p class="eyebrow rise" style="--i: 0">Reference</p>
+          <h1 class="rise" style="--i: 1">CLI</h1>
+          <p class="lead rise" style="--i: 2">One command, no package manager. <code>wizz</code> scaffolds projects, runs the development server, builds for production, serves tooling to AI agents, and keeps itself up to date.</p>
+        </header>
+
+        <h2 id="install" class="reveal">Installing the CLI</h2>
+        <CodeBlock code={installCmd} lang="bash" title="terminal" />
+        <p>The installer puts the compiler and runtime in <code>$XDG_DATA_HOME/wizz</code> (default <code>~/.local/share/wizz</code>) and the launcher in <code>$XDG_BIN_HOME</code> (default <code>~/.local/bin</code>). It needs no administrator privileges and never edits shell profiles. To uninstall, delete both:</p>
+        <CodeBlock code={uninstallCmd} lang="bash" title="uninstall" />
+
+        <h2 id="commands" class="reveal">Command summary</h2>
+        <CodeBlock code={usageText} lang="text" title="wizz (no arguments)" />
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Command</th><th>Purpose</th><th>Flags</th></tr></thead>
+            <tbody>
+              <tr><td><code>init</code></td><td>Scaffold the starter project</td><td><code>[directory]</code> <code>--force</code></td></tr>
+              <tr><td><code>dev</code></td><td>Build, serve, watch, live-reload, SSR</td><td><code>--port</code> <code>--host</code></td></tr>
+              <tr><td><code>build</code></td><td>Production build into <code>dist/</code></td><td><code>[in out]</code> <code>--json</code> <code>--adapter node</code></td></tr>
+              <tr><td><code>mcp</code></td><td>MCP server over stdio</td><td><code>--root</code> <code>--allow-write</code></td></tr>
+              <tr><td><code>update</code></td><td>Swap in the latest release</td><td>—</td></tr>
+              <tr><td><code>install-vscode-extension</code></td><td>Install the release's <code>.vsix</code></td><td>—</td></tr>
+              <tr><td><code>--version</code></td><td>Print the version triple</td><td>—</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h2 id="init" class="reveal">wizz init</h2>
+        <p>Scaffolds the showcase starter: <code>index.html</code>, a global <code>App.css</code>, a landing page with a reactive head, a persisted counter, an animated terminal card, a server-rendered <code>/home</code> page, a sample <code>/api/health</code> handler, and a README. The result runs with no manual edits.</p>
+        <CodeBlock code={initCmd} lang="bash" title="terminal" />
+
+        <h2 id="dev" class="reveal">wizz dev</h2>
+        <p>Uses the current directory as the project. Builds <code>src</code> into <code>dist</code>, serves it, server-renders eligible routes, runs <code>/api/**</code> handlers with <code>.env.server</code> loaded, and live-reloads tabs over <code>/_wizz/reload</code> when sources change.</p>
+        <CodeBlock code={devCmd} lang="bash" title="terminal" />
+        <ul>
+          <li>Requires an <code>index.html</code> shell, checked before the server opens.</li>
+          <li>Watches with native file events and a 250 ms polling fallback (reliable on WSL's <code>/mnt/c</code>).</li>
+          <li>Binds to <strong>127.0.0.1</strong> by default — it has no auth or TLS and executes handlers with your secrets.</li>
+          <li>Compile errors are reported while the server keeps running; a busy port exits with a message naming <code>--port</code>.</li>
+        </ul>
+
+        <h2 id="build" class="reveal">wizz build</h2>
+        <p>Compiles every <code>.wizz</code> file (continuing past failures so you see them all), writes the route and API manifests, copies the runtime, the shell, <code>App.css</code>, and <code>src/server/</code>, extracts scoped CSS into <code>dist/app.css</code>, and writes <code>dist/package.json</code> as <code>{'{"type":"module"}'}</code>. Exits non-zero if any component fails.</p>
+        <CodeBlock code={buildCmd} lang="bash" title="terminal" />
+
+        <h3 id="json" class="reveal">--json diagnostics</h3>
+        <p><code>--json</code> (any position) prints a versioned envelope to stdout instead of prose. Fields may be added within format version 1; existing fields keep their meaning.</p>
+        <CodeBlock code={jsonFailure} lang="json" title="wizz build --json" />
+        <CodeBlock code={ciScript} lang="bash" title="ci.sh" />
+
+        <h3 id="adapter" class="reveal">--adapter node</h3>
+        <p>Opt-in, build-only. Emits <code>dist/server.mjs</code>, a standalone SSR + API host using only Node built-ins. The JSON envelope gains <code>"adapter": "node"</code>. Unknown adapter names fail at the CLI boundary with the list of known ones.</p>
+        <CodeBlock code={adapterCmd} lang="bash" title="terminal" />
+
+        <h2 id="mcp-cmd" class="reveal">wizz mcp</h2>
+        <p>Starts the Model Context Protocol server on stdio for AI agents. The root is fixed at startup, and writes stay disabled unless you opt in. See <a href="/docs/mcp">MCP Server</a> for the tools and security model.</p>
+        <CodeBlock code={mcpCmd} lang="bash" title="terminal" />
+
+        <h2 id="update" class="reveal">wizz update</h2>
+        <p>Fetches the latest release and swaps it into the managed directory in place. The old installation is kept aside until the new one is ready, so the launcher never breaks mid-update. Takes no arguments.</p>
+        <CodeBlock code={updateCmd} lang="bash" title="terminal" />
+
+        <h2 id="vscode" class="reveal">wizz install-vscode-extension</h2>
+        <p>Downloads the latest release's <code>{"wizz-vscode-<version>.vsix"}</code> and installs it with the <code>code</code> command: syntax highlighting, compiler diagnostics, component navigation, and build commands. The extension drives the installed CLI, so keep <code>wizz</code> on your <code>PATH</code> or set <code>wizz.compilerPath</code>.</p>
+        <CodeBlock code={vscodeCmd} lang="bash" title="terminal" />
+
+        <h2 id="version" class="reveal">wizz --version</h2>
+        <CodeBlock code={versionCmd} lang="bash" title="terminal" />
+
+        <h2 id="stability" class="reveal">Stability & exit codes</h2>
+        <p>The supported commands, their documented defaults, generated output paths, and non-zero failure behavior are stable within a CLI major version. Build failures, invalid usage (unknown commands, stray flags, a single build directory), and a missing shell for <code>dev</code> all exit non-zero.</p>
+        <Callout kind="note" title="Automate the CLI, not the scripts" body="build.js, scripts/cli.js, and scripts/dev.js are implementation entry points that may change. Use the wizz command in CI and tooling." />
+      </article>
+      <PageNav prevHref="/docs/api" prevLabel="API Reference" nextHref="/docs/mcp" nextLabel="MCP Server" />
+    </main>
+    <Toc items={toc} />
+  </div>
+</div>

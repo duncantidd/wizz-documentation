@@ -1,0 +1,290 @@
+<script>
+  // current: the route path of the page being read, e.g. "/docs/routing".
+  export let current = "";
+
+  function group(items) {
+    return items.map(([href, label, hint]) => ({
+      href,
+      label,
+      hint,
+      linkClass: href === current ? "side-link is-active" : "side-link",
+      ariaCurrent: href === current ? "page" : "false"
+    }));
+  }
+
+  let start = group([
+    ["/docs/getting-started", "Installation & Setup", "init · dev · build"]
+  ]);
+
+  let core = group([
+    ["/docs/architecture", "Architecture & Philosophy", "compiler pipeline"],
+    ["/docs/components", "Components & Templating", "props · head · styles"],
+    ["/docs/reactivity", "State & Reactivity", "let · events · persist"],
+    ["/docs/routing", "Routing & Navigation", "pages · links · guards"],
+    ["/docs/server", "Server APIs & SSR", "handlers · hydration"]
+  ]);
+
+  let reference = group([
+    ["/docs/api", "API Reference", "every export"],
+    ["/docs/cli", "CLI", "wizz commands"],
+    ["/docs/mcp", "MCP Server", "agent tooling"]
+  ]);
+
+  let examples = group([
+    ["/docs/examples", "Live Examples", "runnable demos"]
+  ]);
+
+  function closeDrawer() {
+    const root = document.documentElement;
+    if (root.dataset.drawer === "open") root.dataset.drawer = "closed";
+  }
+
+  function handleNavClick(event) {
+    if (event.target.closest("a")) closeDrawer();
+  }
+
+  onMount(() => {
+    // Every docs navigation is a fresh document: bring the active row into
+    // view so long sidebars keep their place.
+    const active = document.querySelector(".side-link.is-active");
+    if (active) active.scrollIntoView({ block: "nearest" });
+  });
+</script>
+
+<aside id="docs-sidebar" class="sidebar glass" aria-label="Documentation">
+  <nav class="nav" on:click={handleNavClick}>
+    <details class="group" open>
+      <summary><span class="icon icon-chevron" aria-hidden="true"></span>Getting Started</summary>
+      <ul>{#each start as item (item.href)}<li><a class={item.linkClass} href={item.href} aria-current={item.ariaCurrent}><span class="nav-pill" aria-hidden="true"></span><span class="label">{item.label}</span><span class="hint">{item.hint}</span></a></li>{/each}</ul>
+    </details>
+    <details class="group" open>
+      <summary><span class="icon icon-chevron" aria-hidden="true"></span>Core Concepts</summary>
+      <ul>{#each core as item (item.href)}<li><a class={item.linkClass} href={item.href} aria-current={item.ariaCurrent}><span class="nav-pill" aria-hidden="true"></span><span class="label">{item.label}</span><span class="hint">{item.hint}</span></a></li>{/each}</ul>
+    </details>
+    <details class="group" open>
+      <summary><span class="icon icon-chevron" aria-hidden="true"></span>Reference</summary>
+      <ul>{#each reference as item (item.href)}<li><a class={item.linkClass} href={item.href} aria-current={item.ariaCurrent}><span class="nav-pill" aria-hidden="true"></span><span class="label">{item.label}</span><span class="hint">{item.hint}</span></a></li>{/each}</ul>
+    </details>
+    <details class="group" open>
+      <summary><span class="icon icon-chevron" aria-hidden="true"></span>Examples</summary>
+      <ul>{#each examples as item (item.href)}<li><a class={item.linkClass} href={item.href} aria-current={item.ariaCurrent}><span class="nav-pill" aria-hidden="true"></span><span class="label">{item.label}</span><span class="hint">{item.hint}</span></a></li>{/each}</ul>
+    </details>
+  </nav>
+  <footer class="versions">
+    <span class="badge badge-mint">0 runtime deps</span>
+    <code>compiler 1.17.0 · syntax 1.4.1 · output 1.8.2</code>
+  </footer>
+</aside>
+
+<wizz:style>
+  .sidebar {
+    position: sticky;
+    inset-block-start: var(--chrome-top);
+    display: flex;
+    flex-direction: column;
+    max-block-size: calc(100dvh - var(--chrome-top) - 1rem);
+    padding: 0.75rem;
+    border-radius: var(--r-lg);
+    overflow: hidden;
+    view-transition-name: sidebar;
+    transition:
+      opacity var(--dur) var(--ease-out),
+      transform var(--dur) var(--ease-out),
+      visibility var(--dur) allow-discrete;
+  }
+
+  :root[data-sidebar="collapsed"] .sidebar {
+    opacity: 0;
+    transform: translateX(-1.5rem);
+    visibility: hidden;
+    pointer-events: none;
+  }
+
+  .nav {
+    flex: 1;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    padding-inline-end: 0.15rem;
+  }
+
+  .group + .group {
+    margin-block-start: 0.5rem;
+  }
+
+  summary {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    border-radius: var(--r-sm);
+    color: var(--ink-3);
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    cursor: pointer;
+    list-style: none;
+    user-select: none;
+  }
+
+  summary::-webkit-details-marker {
+    display: none;
+  }
+
+  summary:hover {
+    color: var(--ink-2);
+  }
+
+  summary .icon {
+    font-size: 0.85rem;
+    transition: transform var(--dur) var(--ease-out);
+  }
+
+  .group[open] summary .icon {
+    transform: rotate(90deg);
+  }
+
+  /* Animate the disclosure body open and closed where supported. */
+  .group::details-content {
+    block-size: 0;
+    overflow: clip;
+    transition: block-size var(--dur) var(--ease-out), content-visibility var(--dur) allow-discrete;
+  }
+
+  .group[open]::details-content {
+    block-size: auto;
+  }
+
+  @supports (interpolate-size: allow-keywords) {
+    .sidebar {
+      interpolate-size: allow-keywords;
+    }
+  }
+
+  ul {
+    margin: 0.15rem 0 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .side-link {
+    position: relative;
+    display: grid;
+    gap: 0.05rem;
+    padding: 0.5rem 0.75rem 0.5rem 1.05rem;
+    border-radius: var(--r-sm);
+    color: var(--ink-2);
+    text-decoration: none;
+    isolation: isolate;
+    transition: color var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+
+  .side-link:hover {
+    color: var(--ink);
+    transform: translateX(2px);
+  }
+
+  .side-link::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -2;
+    border-radius: inherit;
+    background-color: var(--hover-fill);
+    opacity: 0;
+    transition: opacity var(--dur-fast) var(--ease-out);
+  }
+
+  .side-link:hover::after {
+    opacity: 1;
+  }
+
+  .label {
+    font-size: 0.92rem;
+    font-weight: 600;
+  }
+
+  .hint {
+    color: var(--ink-3);
+    font-size: 0.74rem;
+    font-weight: 500;
+  }
+
+  .nav-pill {
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    border-radius: inherit;
+    opacity: 0;
+  }
+
+  /* The active pill is a real element with a view-transition-name, so the
+     cross-document transition glides it from the previous page's row. */
+  .is-active .nav-pill {
+    opacity: 1;
+    background:
+      linear-gradient(90deg, color-mix(in oklch, var(--accent) 22%, transparent), color-mix(in oklch, var(--cyan) 8%, transparent));
+    box-shadow:
+      inset 0 0 0 1px color-mix(in oklch, var(--accent) 38%, transparent),
+      inset 0 1px 0 var(--glint);
+    view-transition-name: nav-pill;
+  }
+
+  .is-active .nav-pill::before {
+    content: "";
+    position: absolute;
+    inset-block: 0.55rem;
+    inset-inline-start: 0.35rem;
+    inline-size: 3px;
+    border-radius: var(--r-pill);
+    background: linear-gradient(var(--cyan), var(--accent));
+    box-shadow: 0 0 10px color-mix(in oklch, var(--accent) 70%, transparent);
+  }
+
+  .side-link.is-active {
+    color: var(--ink);
+  }
+
+  .versions {
+    display: grid;
+    gap: 0.45rem;
+    justify-items: start;
+    margin-block-start: 0.75rem;
+    padding: 0.8rem 0.6rem 0.3rem;
+    border-block-start: 1px solid var(--hairline);
+  }
+
+  .versions code {
+    color: var(--ink-3);
+    font-size: 0.68rem;
+  }
+
+  @media (max-width: 56rem) {
+    .sidebar {
+      position: fixed;
+      inset-block: calc(var(--chrome-top) - 0.25rem) 0.75rem;
+      inset-inline-start: 0.75rem;
+      z-index: 40;
+      inline-size: min(20rem, calc(100vw - 1.5rem));
+      max-block-size: none;
+      /* Over body copy the drawer needs a higher opacity floor. */
+      --pane-top: light-dark(oklch(1 0 0 / 0.9), oklch(0.22 0.035 268 / 0.88));
+      --pane-bottom: light-dark(oklch(1 0 0 / 0.84), oklch(0.17 0.03 268 / 0.84));
+      opacity: 0;
+      transform: translateX(-110%);
+      visibility: hidden;
+    }
+
+    :root[data-sidebar="collapsed"] .sidebar {
+      transform: translateX(-110%);
+    }
+
+    :root[data-drawer="open"] .sidebar {
+      opacity: 1;
+      transform: translateX(0);
+      visibility: visible;
+      pointer-events: auto;
+    }
+  }
+</wizz:style>

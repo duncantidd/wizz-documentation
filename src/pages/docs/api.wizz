@@ -1,0 +1,398 @@
+<script>
+  import TopNav from "../../components/TopNav.wizz";
+  import Sidebar from "../../components/Sidebar.wizz";
+  import Toc from "../../components/Toc.wizz";
+  import Callout from "../../components/Callout.wizz";
+  import PageNav from "../../components/PageNav.wizz";
+  import ApiEntry from "../../components/ApiEntry.wizz";
+
+  const toc = [
+    { id: "script-globals", label: "Script globals" },
+    { id: "on-mount", label: "onMount()", depth: 3 },
+    { id: "on-destroy", label: "onDestroy()", depth: 3 },
+    { id: "persist", label: "persist()", depth: 3 },
+    { id: "export-let", label: "export let", depth: 3 },
+    { id: "template", label: "Template syntax" },
+    { id: "on-directive", label: "on:event", depth: 3 },
+    { id: "if-block", label: "{#if}", depth: 3 },
+    { id: "each-block", label: "{#each}", depth: 3 },
+    { id: "wizz-head", label: "<wizz:head>", depth: 3 },
+    { id: "wizz-style", label: "<wizz:style>", depth: 3 },
+    { id: "modules", label: "Generated modules" },
+    { id: "mount-component", label: "mountComponent()", depth: 3 },
+    { id: "hydrate-component", label: "hydrateComponent()", depth: 3 },
+    { id: "hydrate-root", label: "hydrateRoot()", depth: 3 },
+    { id: "render-component", label: "renderComponent()", depth: 3 },
+    { id: "serialize-initial-state", label: "serializeInitialState()", depth: 3 },
+    { id: "compiler", label: "Compiler API" },
+    { id: "compile", label: "compile()", depth: 3 },
+    { id: "compile-server", label: "compileServer()", depth: 3 },
+    { id: "versions", label: "VERSIONS", depth: 3 },
+    { id: "runtime", label: "Runtime" },
+    { id: "create-router", label: "createRouter()", depth: 3 },
+    { id: "api-handler", label: "API handler", depth: 3 },
+    { id: "diagnostics", label: "Diagnostic codes" }
+  ];
+
+  /* ---------------- Script globals ---------------- */
+
+  const onMountParams = [
+    { name: "callback", type: "() => void", desc: "Runs once on the client after the component is attached, its children are mounted, and the initial update has completed. May be async." }
+  ];
+  const onMountExample = `<script>
+  let status = "connecting";
+
+  onMount(() => {
+    status = "ready";   // reactive: flows through the scheduler
+  });
+<\/script>
+
+<main><p>{status}</p></main>`;
+
+  const onDestroyParams = [
+    { name: "callback", type: "() => void", desc: "Runs when destroy() is called — before child components are destroyed and the root is removed." }
+  ];
+  const onDestroyExample = `<script>
+  let width = 0;
+
+  function measure() {
+    width = window.innerWidth;
+  }
+
+  onMount(() => {
+    measure();
+    window.addEventListener("resize", measure);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener("resize", measure);   // yours to remove
+  });
+<\/script>
+
+<p>{width}px</p>`;
+
+  const persistParams = [
+    { name: "key", type: "string literal", desc: "The localStorage key, used verbatim. Components of one origin share one namespace." },
+    { name: "defaultValue", type: "JSON value", desc: "Used when nothing is stored, storage is unreadable, and during server rendering." }
+  ];
+  const persistExample = `<script>
+  let theme = persist("theme", "light");
+
+  function toggle() {
+    theme = theme === "light" ? "dark" : "light";   // writes + broadcasts
+  }
+<\/script>
+
+<button on:click={toggle}>Theme: {theme}</button>`;
+
+  const exportLetParams = [
+    { name: "name", type: "identifier", desc: "The prop name. One prop per declaration; may not start with the reserved __wizz prefix." },
+    { name: "default", type: "expression?", desc: "Optional default, used when the parent omits the prop or passes undefined." }
+  ];
+  const exportLetExample = `<script>
+  export let label = "Untitled";
+  export let count;               // undefined unless passed
+<\/script>
+
+<p>{label}: {count}</p>
+
+<!-- parent -->
+<Badge label="Inbox" count={unread} />`;
+
+  /* ---------------- Template syntax ---------------- */
+
+  const onParams = [
+    { name: "event", type: "DOM event name", desc: "Any native event: click, input, submit, keydown, pointermove…" },
+    { name: "handler", type: "identifier | (event) => …", desc: "A component function, or an expression whose value is passed to addEventListener." }
+  ];
+  const onExample = `<input on:input={handleInput} />
+<button on:click={(event) => add(event.detail)}>Add</button>
+<ul on:click={handleListClick}>{#each rows as row (row.id)}<li data-id={row.id}>{row.label}</li>{/each}</ul>`;
+
+  const ifParams = [
+    { name: "condition", type: "expression", desc: "Identifier, member access, literal, or strict equality (===)." }
+  ];
+  const ifExample = `{#if status === "ready"}
+  <p>Ready.</p>
+{:else}
+  <p>Loading…</p>
+{/if}`;
+
+  const eachParams = [
+    { name: "items", type: "reactive let", desc: "The collection. A const renders once at mount; a let updates on reassignment." },
+    { name: "item", type: "identifier", desc: "Name for the current element inside the body." },
+    { name: "(key)", type: "expression?", desc: "Optional unique key. Keyed blocks retain and move nodes by key; keyless blocks reconcile by index. Duplicate keys throw." }
+  ];
+  const eachExample = `<ul class="users">{#each users as user (user.id)}<li class={user.rowClass}>{user.name}</li>{/each}</ul>`;
+
+  const headParams = [
+    { name: "children", type: "<title> | <meta> | <link>", desc: "The only permitted elements. Expressions evaluate at render time; on: directives are skipped." }
+  ];
+  const headExample = `<wizz:head>
+  <title>{post.title} — Blog</title>
+  <meta name="description" content={post.summary}>
+  <link rel="canonical" href={post.url}>
+</wizz:head>`;
+
+  const styleParams = [
+    { name: "css", type: "raw CSS", desc: "Scoped by a data-wizz-s attribute on each selector's terminal element; @keyframes names gain the scope suffix; @media is descended." }
+  ];
+  const styleExample = `<wizz:style>
+  .card { padding: 1rem; }
+  .card:hover h2 { color: var(--accent); }
+  @keyframes pulse { 50% { opacity: 0.6; } }
+</wizz:style>`;
+
+  /* ---------------- Generated modules ---------------- */
+
+  const mountParams = [
+    { name: "target", type: "Node", desc: "A live DOM node; the component's root is appended to it." },
+    { name: "props", type: "object = {}", desc: "Initial values for declared props." }
+  ];
+  const mountExample = `import mountComponent from "/components/Counter.js";
+
+const handle = mountComponent(document.getElementById("slot"), { label: "Clicks" });
+handle.setProps?.({ label: "Taps" });
+handle.destroy();   // exactly once`;
+
+  const hydrateParams = [
+    { name: "target", type: "Element", desc: "The mount point that already contains the server-rendered markup." },
+    { name: "props", type: "object", desc: "The same props the server rendered with." },
+    { name: "state", type: "object", desc: "The parsed application/wizz-state payload." }
+  ];
+  const hydrateExample = `import { hydrateComponent } from "/pages/Home.hydrate.js";
+
+const script = document.querySelector('script[type="application/wizz-state"]');
+const state = JSON.parse(script.textContent);
+script.remove();
+
+const handle = hydrateComponent(document.getElementById("app"), {}, state);`;
+
+  const hydrateRootParams = [
+    { name: "rootNode", type: "Element", desc: "The exact element to adopt as the component root." },
+    { name: "props", type: "object", desc: "Props for the component." },
+    { name: "state", type: "object", desc: "The component's state slice (for children: state.__wizz.components[id])." }
+  ];
+  const hydrateRootExample = `// Used by parents during nested hydration; available on every hydratable module.
+import { hydrateRoot } from "/components/Card.hydrate.js";
+
+const handle = hydrateRoot(cardElement, { title: "Intro" }, cardState);`;
+
+  const renderParams = [
+    { name: "props", type: "object = {}", desc: "Props to render with." },
+    { name: "options", type: "object = {}", desc: "Present when the component or a child declares <wizz:head>; carries the head owner path." }
+  ];
+  const renderExample = `import { renderComponent } from "./dist/pages/Home.server.js";
+
+const { html, head, state } = renderComponent({});
+// html:  escaped markup, no DOM involved
+// head:  serialized head markup (only when <wizz:head> is declared)
+// state: reactive state snapshot, children under state.__wizz.components`;
+
+  const serializeParams = [
+    { name: "state", type: "object", desc: "The state returned by renderComponent()." }
+  ];
+  const serializeExample = `import { renderComponent, serializeInitialState } from "./dist/pages/Home.server.js";
+
+const { html, state } = renderComponent({});
+const body = '<div id="app">' + html + "</div>" + serializeInitialState(state);
+// '<script type="application/wizz-state">{"count":0}<\/script>' — every "<" escaped`;
+
+  /* ---------------- Compiler API ---------------- */
+
+  const compileParams = [
+    { name: "source", type: "string", desc: "The .wizz component source." },
+    { name: "options.filePath", type: "string?", desc: "Qualifies errors with the path and adds a caret code frame. Always pass it for files." },
+    { name: "options.hydratable", type: "boolean?", desc: "Restrict to the server-renderable surface and also export hydrateComponent / hydrateRoot." },
+    { name: "options.diagnostics", type: "'collect'?", desc: "Return { diagnostics: [...] } records instead of throwing." }
+  ];
+  const compileExample = `const { compile } = require("./src/compiler");
+
+const { source, payload, sourceMap, version } = compile(componentSource, {
+  filePath: "src/pages/Home.wizz"
+});
+
+try {
+  compile("<main></section>");
+} catch (error) {
+  error.code;      // "WIZZ-P018" — mismatched closing tag
+  error.line;      // structured location
+}
+
+const result = compile("<main><p>hi", { filePath: "src/App.wizz", diagnostics: "collect" });
+result.diagnostics[0].code;   // "WIZZ-P022"`;
+
+  const compileServerParams = [
+    { name: "source", type: "string", desc: "The .wizz component source." },
+    { name: "options.filePath", type: "string?", desc: "As for compile()." },
+    { name: "options.diagnostics", type: "'collect'?", desc: "As for compile()." },
+    { name: "options.componentServerRenderable", type: "Record<string, true>", desc: "Import names whose own server builds compile; a missing entry rejects that tag." },
+    { name: "options.componentIneligibilityReasons", type: "Record<string, string>", desc: "Child failure reasons, chained into the diagnostic as 'Underlying reason: …'." }
+  ];
+  const compileServerExample = `const { compileServer } = require("./src/compiler");
+
+const { source, sourceMap } = compileServer(componentSource, {
+  filePath: "src/components/Counter.wizz"
+});
+// source exports renderComponent() and serializeInitialState(); sourceMap is always null`;
+
+  const versionsExample = `const { VERSIONS } = require("./src/compiler");
+
+VERSIONS;
+// { compiler: "1.17.0", syntax: "1.4.1", output: "1.8.2" }  (frozen)`;
+
+  const noParams = [];
+
+  /* ---------------- Runtime ---------------- */
+
+  const routerParams = [
+    { name: "routes", type: "Record<path, () => Promise<module>>", desc: "Lazy client module loaders keyed by exact pathname." },
+    { name: "hydratableRoutes", type: "Record<path, () => Promise<module>>", desc: "Optional hydratable loaders, used only for the first render." },
+    { name: "target", type: "Element", desc: "The mount point (#app)." },
+    { name: "window / document", type: "Window / Document", desc: "Injected globals, which keeps the router testable." }
+  ];
+  const routerExample = `import { createRouter } from "/runtime/router.js";
+
+const router = createRouter({ routes, hydratableRoutes, target, window, document });
+await router.render();             // match location.pathname, hydrate or mount
+await router.navigate("/docs");    // pushState + render
+router.destroy();                  // remove popstate listener + current page`;
+
+  const handlerParams = [
+    { name: "request.method", type: "string", desc: "'GET', 'POST', …" },
+    { name: "request.path", type: "string", desc: "Decoded pathname." },
+    { name: "request.query", type: "URLSearchParams", desc: "Parsed query string." },
+    { name: "request.headers", type: "object", desc: "Lowercased header names." },
+    { name: "request.body", type: "string | null", desc: "Raw body text (max 1 MB, else 413)." },
+    { name: "request.json()", type: "() => Promise<any>", desc: "Parses the body; malformed JSON answers 400." }
+  ];
+  const handlerExample = `// src/server/api/health.js → /api/health
+export default async function handler(request) {
+  return { ok: true, method: request.method };   // 200 JSON
+}`;
+
+  /* ---------------- Diagnostics ---------------- */
+
+  const parseCodes = [
+    ["P001", "Template tokenizer error"], ["P002", "Malformed {#each} syntax"], ["P003", "Unexpected {/each}"],
+    ["P004", "Unexpected {/if}"], ["P005", "Unexpected {:else}"], ["P006", "Disallowed child inside <title>"],
+    ["P007", "Disallowed element inside <wizz:head>"], ["P008", "Element inside <wizz:style> (raw CSS only)"],
+    ["P009", "Attributes on <wizz:head>"], ["P010", "Nested <wizz:head>"], ["P011", "Attributes on <wizz:style>"],
+    ["P012", "Nested <wizz:style>"], ["P013", "Duplicate <wizz:head>"], ["P014", "Duplicate <wizz:style>"],
+    ["P015", "Block directive inside <wizz:head>"], ["P016", "Expression directly inside <wizz:head>"],
+    ["P017", "Expression inside <wizz:style>"], ["P018", "Mismatched closing tag"],
+    ["P019", "Only <title>, <meta>, <link> allowed in <wizz:head>"], ["P020", "Plain <style> — use <wizz:style>"],
+    ["P021", "Closing tag on a void element"], ["P022", "Unclosed tag"], ["P023", "Unexpected closing tag"],
+    ["P024", "Unsupported token type"], ["P025", "Unclosed string in expression"],
+    ["P026", "Unexpected character in expression"], ["P027", "Unparseable expression start"],
+    ["P028", "Expected closing parenthesis"], ["P029", "Expected property after ."],
+    ["P030", "Unexpected expression token"], ["P031", "Missing {#if} condition"],
+    ["P032", "Dynamic attribute missing expression"], ["P033", "Template expression error"],
+    ["P034", "Invalid prop name"], ["P035", "Reserved prop prefix (__wizz)"], ["P036", "export let without a name"],
+    ["P037", "export not at top level"], ["P038", "One prop per export let"], ["P039", "Invalid prop declaration"],
+    ["P040", "Duplicate prop"], ["P041", "Prop missing value"], ["P042", "Prop missing semicolon"],
+    ["P043", "Unsupported export syntax"], ["P044", "persist() on a prop"], ["P045", "persist() on a const"],
+    ["P046", "persist() not at top level"], ["P047", "Statements trailing a persist() declaration"],
+    ["P048", "persist() missing arguments"], ["P049", "persist() extra arguments"],
+    ["P050", "persist() key not a string literal"], ["P051", "Nested persist()"],
+    ["P052", "Unparseable persist() call"], ["P053", "Expression depth budget exceeded"],
+    ["P054", "Template depth budget exceeded"]
+  ].map(([code, text]) => ({ code: "WIZZ-" + code, text }));
+
+  const generateCodes = [
+    ["G001", "Template has no root element"], ["G002", "{#each} outside a native element"],
+    ["G003", "{#each} body must have one root element"], ["G004", "Component inside {#each}"],
+    ["G005", "Unsupported node inside {#each} (nested blocks)"], ["G006", "on: directive inside {#each}"],
+    ["G007", "Invalid prop attribute name"], ["G008", "Children on a component tag"],
+    ["G009", "Component missing its id (internal pipeline guard)"], ["G010", "Component tag outside a native element"],
+    ["G011", "on: directive on a component tag"], ["G012", "Event directive missing handler"],
+    ["G013", "Invalid event directive"], ["G014", "Disallowed child inside <title>"],
+    ["G015", "Assignment to a prop"], ["G016", "Imports must each be on their own line"],
+    ["G017", "Reserved reactive state name (__proto__, __wizz…)"], ["G018", "Server build: unsupported node"],
+    ["G019", "Server build: unsupported head node"], ["G020", "Server build: component not server-renderable"],
+    ["G021", "Void element with children"], ["G022", "Hydration: unsupported node"],
+    ["G023", "Hydration: unsupported node in {#each}"], ["G024", "persist() rewrite drift (internal guard)"]
+  ].map(([code, text]) => ({ code: "WIZZ-" + code, text }));
+
+  function trackSheen(event) {
+    const card = event.target.closest(".sheen");
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    card.style.setProperty("--mx", event.clientX - rect.left + "px");
+    card.style.setProperty("--my", event.clientY - rect.top + "px");
+  }
+</script>
+
+<wizz:head>
+  <title>API Reference — Wizz.js Docs</title>
+  <meta name="description" content="Every Wizz.js API: onMount, onDestroy, persist, props, template directives, generated module exports, compile/compileServer, createRouter, API handlers, and diagnostic codes.">
+</wizz:head>
+
+<div class="site">
+  <TopNav section="api" showMenu={true} />
+  <div class="doc-shell">
+    <Sidebar current="/docs/api" />
+    <main id="main" class="doc-main glass" on:pointermove={trackSheen}>
+      <article class="prose">
+        <header>
+          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.17.0 · syntax 1.4.1 · output 1.8.2</p>
+          <h1 class="rise" style="--i: 1">API Reference</h1>
+          <p class="lead rise" style="--i: 2">The complete public surface: what a component script can call, what a template can express, what every compiled module exports, and the compiler, router, and server entry points behind them.</p>
+        </header>
+
+        <h2 id="script-globals" class="reveal">Script globals</h2>
+        <p>Available inside every component <code>{"<script>"}</code> with no import — the compiled module provides them.</p>
+        <ApiEntry anchor="on-mount" name="onMount()" kind="lifecycle" origin="component script" signature="onMount(callback: () => void): void" summary="Registers a hook that runs once, client-side, after mount. The right place for browser APIs, timers, observers, fetches, and anything that reads window, document, or the URL." params={onMountParams} returns="void" example={onMountExample} exampleTitle="Status.wizz" />
+        <ApiEntry anchor="on-destroy" name="onDestroy()" kind="lifecycle" origin="component script" signature="onDestroy(callback: () => void): void" summary="Registers a teardown hook. Remove global listeners, clear timers, disconnect observers, and abort in-flight requests here. Do not change state — the component is going away." params={onDestroyParams} returns="void" example={onDestroyExample} exampleTitle="Width.wizz" />
+        <ApiEntry anchor="persist" name="persist()" kind="state marker" origin="component script" signature="let name = persist(key: string, defaultValue: any);" summary="Marks a top-level let as persisted: read from localStorage at mount, written on every statement mutation, and synchronized across components and tabs via BroadcastChannel (storage events as fallback). Server renders use the default." params={persistParams} returns="The stored value, or defaultValue — as an ordinary reactive variable." example={persistExample} exampleTitle="ThemeToggle.wizz" />
+        <ApiEntry anchor="export-let" name="export let" kind="prop" origin="component script" signature="export let name = defaultValue;" summary="Declares a reactive, read-only prop. Parents pass it as an attribute; updates arrive through setProps() without remounting. Assigning a prop in the child is a compile error (WIZZ-G015)." params={exportLetParams} returns="" example={exportLetExample} exampleTitle="Badge.wizz" />
+
+        <h2 id="template" class="reveal">Template syntax</h2>
+        <p>Expressions in <code>{"{...}"}</code> accept identifiers, member access, string and number literals, and strict equality. Bind attributes with an unquoted expression as the whole value.</p>
+        <ApiEntry anchor="on-directive" name="on:event" kind="directive" origin="native elements" signature="<element on:event={handler}>" summary="Attaches a native listener with addEventListener. Client-only; removed automatically on destroy. Not allowed on component tags (WIZZ-G011) or inside {#each} bodies (WIZZ-G006) — delegate from the container instead." params={onParams} returns="" example={onExample} exampleTitle="directives" />
+        <ApiEntry anchor="if-block" name="{#if} … {:else} … {/if}" kind="block" origin="template" signature="{#if condition} … {:else} … {/if}" summary="Chooses a branch at mount time. Changing the condition later does not swap an already-rendered branch, so drive interactive show/hide with a bound class." params={ifParams} returns="" example={ifExample} exampleTitle="branch" />
+        <ApiEntry anchor="each-block" name="{#each} … {/each}" kind="block" origin="template" signature="{#each items as item (key)} <row /> {/each}" summary="Renders one native root element per item, inside a native parent. Bodies may not contain components, on: directives, or nested blocks." params={eachParams} returns="" example={eachExample} exampleTitle="list" />
+        <ApiEntry anchor="wizz-head" name="<wizz:head>" kind="block" origin="component root" signature="<wizz:head> <title/> <meta/> <link/> </wizz:head>" summary="Per-component document metadata. Server-rendered into the head and adopted on hydration; client mounts prepend tagged nodes and destroy() releases them. Multiple titles resolve last-in-tree-wins." params={headParams} returns="" example={headExample} exampleTitle="head" />
+        <ApiEntry anchor="wizz-style" name="<wizz:style>" kind="block" origin="component root" signature="<wizz:style> /* raw CSS */ </wizz:style>" summary="Component-scoped CSS. Delivered once per document in dev, adopted on hydration, refcounted on client mounts, and extracted to dist/app.css by wizz build. Expressions are never interpolated into CSS." params={styleParams} returns="" example={styleExample} exampleTitle="styles" />
+
+        <h2 id="modules" class="reveal">Generated modules</h2>
+        <p>Each component compiles to <code>Name.js</code>; server-renderable components also get <code>Name.server.js</code> and <code>Name.hydrate.js</code>. These surfaces are covered by the <strong>output</strong> version.</p>
+        <ApiEntry anchor="mount-component" name="mountComponent()" kind="default export" origin="Name.js" signature="export default function mountComponent(target: Node, props?: object): { setProps?(next: object): void; destroy(): void }" summary="Creates the component's DOM, appends its root to target, runs the initial update and mount hooks, and returns a handle. setProps exists only when the component declares props." params={mountParams} returns="{ setProps?, destroy } — call destroy() exactly once." example={mountExample} exampleLang="js" exampleTitle="manual mount" />
+        <ApiEntry anchor="hydrate-component" name="hydrateComponent()" kind="named export" origin="Name.hydrate.js" signature="hydrateComponent(target: Element, props: object, state: object): Handle" summary="Adopts server-rendered markup in place: verifies tags, data-wizz-id attributes, and text against the template, then attaches listeners. On any mismatch it warns once, clears target, and mounts fresh." params={hydrateParams} returns="The same handle shape as mountComponent()." example={hydrateExample} exampleLang="js" exampleTitle="manual hydration" />
+        <ApiEntry anchor="hydrate-root" name="hydrateRoot()" kind="named export" origin="Name.hydrate.js" signature="hydrateRoot(rootNode: Element, props: object, state: object): Handle" summary="Adopts the given node itself as the component root. Parents use it for nested hydration; a structural mismatch remounts inside the child's root without detaching the parent." params={hydrateRootParams} returns="The component handle." example={hydrateRootExample} exampleLang="js" exampleTitle="nested hydration" />
+        <ApiEntry anchor="render-component" name="renderComponent()" kind="named export" origin="Name.server.js" signature="renderComponent(props?: object, options?: object): { html: string; head?: string; state: object }" summary="Renders escaped HTML without a DOM. Event handlers and hooks are skipped; author scripts run, so browser globals at the top level throw." params={renderParams} returns="{ html, head?, state }" example={renderExample} exampleLang="js" exampleTitle="server render" />
+        <ApiEntry anchor="serialize-initial-state" name="serializeInitialState()" kind="named export" origin="Name.server.js" signature="serializeInitialState(state: object): string" summary="Serializes state into an inline application/wizz-state script with every '<' escaped. Deliver it as a sibling of the mount point, never inside it." params={serializeParams} returns="An HTML string." example={serializeExample} exampleLang="js" exampleTitle="delivery" />
+
+        <h2 id="compiler" class="reveal">Compiler API</h2>
+        <p>Exported from <code>src/compiler</code> (CommonJS). Most applications never call it directly — <code>wizz build</code> and <code>wizz dev</code> do.</p>
+        <ApiEntry anchor="compile" name="compile()" kind="function" origin="src/compiler" signature="compile(source: string, options?: { filePath?, hydratable?, diagnostics? }): { source, payload, sourceMap, version, diagnostics? }" summary="Compiles a component to a mountable ES module. Errors are SyntaxErrors carrying a stable code, line, column, and (with filePath) a caret code frame." params={compileParams} returns="source (module text), payload (analyzed AST), sourceMap (v3 or null), version (frozen triple)." example={compileExample} exampleLang="js" exampleTitle="build tooling" />
+        <ApiEntry anchor="compile-server" name="compileServer()" kind="function" origin="src/compiler" signature="compileServer(source: string, options?: object): { source, payload, sourceMap: null, version }" summary="Shares the parse → analyze → assign pipeline and emits a DOM-free server module. Component tags render through each child's own server module, gated by the eligibility options." params={compileServerParams} returns="The same shape as compile(), with sourceMap always null." example={compileServerExample} exampleLang="js" exampleTitle="server target" />
+        <ApiEntry anchor="versions" name="VERSIONS" kind="constant" origin="src/compiler" signature="VERSIONS: Readonly<{ compiler: string; syntax: string; output: string }>" summary="The frozen compatibility triple, also stamped on the first line of every generated module and printed by wizz --version." params={noParams} returns="" example={versionsExample} exampleLang="js" exampleTitle="versions" />
+
+        <h2 id="runtime" class="reveal">Runtime</h2>
+        <ApiEntry anchor="create-router" name="createRouter()" kind="function" origin="runtime/router.js" signature="createRouter({ routes, hydratableRoutes?, target, window, document }): { render(), navigate(pathname), destroy() }" summary="The client router used by runtime/main.js. Exact pathname matching, first-render hydration, lazy imports, race-safe renders, and a popstate listener." params={routerParams} returns="{ render(): Promise, navigate(pathname): Promise, destroy(): void }" example={routerExample} exampleLang="js" exampleTitle="custom entry" />
+        <ApiEntry anchor="api-handler" name="handler(request)" kind="default export" origin="src/server/api/*.js" signature="export default async function handler(request: Readonly<Request>): unknown" summary="Server-side route handler. Plain value → 200 JSON, string → text, undefined → 204, { status, headers, body } → full control, throw → fixed 500." params={handlerParams} returns="See the return-value table in Server APIs & SSR." example={handlerExample} exampleLang="js" exampleTitle="src/server/api/health.js" />
+
+        <h2 id="diagnostics" class="reveal">Diagnostic codes</h2>
+        <p>Every author-facing compile failure carries a stable code. Codes are never reworded into a different meaning or reused, so tooling can switch on them. <code>WIZZ-A###</code> is reserved and empty.</p>
+        <Callout kind="tip" title="Machine-readable everywhere" body="wizz build --json, the MCP component_diagnostics tool, and compile({ diagnostics: 'collect' }) all return the same { code, severity, message, file, line, column } records." />
+        <h3>Parse stage — WIZZ-P</h3>
+        <div class="table-scroll">
+          <table class="codes">
+            <thead><tr><th>Code</th><th>Condition</th></tr></thead>
+            <tbody>{#each parseCodes as row (row.code)}<tr><td><code>{row.code}</code></td><td>{row.text}</td></tr>{/each}</tbody>
+          </table>
+        </div>
+        <h3>Generate stage — WIZZ-G</h3>
+        <div class="table-scroll">
+          <table class="codes">
+            <thead><tr><th>Code</th><th>Condition</th></tr></thead>
+            <tbody>{#each generateCodes as row (row.code)}<tr><td><code>{row.code}</code></td><td>{row.text}</td></tr>{/each}</tbody>
+          </table>
+        </div>
+      </article>
+      <PageNav prevHref="/docs/server" prevLabel="Server APIs & SSR" nextHref="/docs/cli" nextLabel="CLI" />
+    </main>
+    <Toc items={toc} />
+  </div>
+</div>

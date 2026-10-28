@@ -1,0 +1,6 @@
+# The Wizz hydration walk compares template whitespace byte-for-byte with
+# the browser-parsed DOM, which normalizes CRLF to LF: keep sources LF.
+*.wizz text eol=lf
+*.css text eol=lf
+*.html text eol=lf
+*.js text eol=lf

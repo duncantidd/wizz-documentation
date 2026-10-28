@@ -1,0 +1,432 @@
+<script>
+  import TopNav from "./components/TopNav.wizz";
+  import Counter from "./components/Counter.wizz";
+  import CodeBlock from "./components/CodeBlock.wizz";
+
+  const installSnippet = `curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/install-cli.sh | bash
+wizz init my-app
+cd my-app && wizz dev   # http://127.0.0.1:3000`;
+
+  const counterSource = `<script>
+  // Reactive, persisted, and synced across tabs.
+  let count = persist("wizz_docs_counter", 0);
+
+  function increment() {
+    count += 1;
+  }
+<\/script>
+
+<div class="counter">
+  <output>{count}</output>
+  <button on:click={increment}>+</button>
+</div>`;
+
+  const features = [
+    {
+      id: "deps",
+      icon: "icon icon-bolt",
+      title: "Zero runtime dependencies",
+      body: "No npm graph, no Virtual DOM, no hydration framework. The browser receives compiled ES modules and a ~150-line router."
+    },
+    {
+      id: "compiled",
+      icon: "icon icon-doc",
+      title: "Compiled, not interpreted",
+      body: "Each .wizz file compiles ahead of time to createElement, textContent, and keyed list updates — only the nodes that depend on changed state are touched."
+    },
+    {
+      id: "ssr",
+      icon: "icon icon-arrow",
+      title: "SSR + hydration by default",
+      body: "Pages render on the server and adopt their markup in place. A mismatch falls back to a clean client render — never duplicate DOM."
+    },
+    {
+      id: "persist",
+      icon: "icon icon-check",
+      title: "persist() cross-tab state",
+      body: "Swap a let initializer for persist(key, default) and the value survives reloads and converges across tabs over BroadcastChannel."
+    },
+    {
+      id: "styles",
+      icon: "icon icon-hash",
+      title: "Scoped styles, extracted",
+      body: "<wizz:style> is scoped by a data-wizz-s attribute and extracted into app.css at build time — first paint arrives styled."
+    },
+    {
+      id: "agents",
+      icon: "icon icon-search",
+      title: "Built for agents too",
+      body: "Stable WIZZ-P/G diagnostic codes, a JSON build envelope, and an MCP server with compile-gated writes."
+    }
+  ];
+
+  const steps = [
+    { id: "s1", n: "01", title: "Parse", body: "Tokenize the template, extract <script>, <wizz:head>, <wizz:style>, imports, props, persist markers." },
+    { id: "s2", n: "02", title: "Analyze", body: "Map every template expression to the reactive names it reads and assign stable node IDs." },
+    { id: "s3", n: "03", title: "Generate", body: "Emit a client module, a DOM-free server module, and a hydratable build with scoped CSS." },
+    { id: "s4", n: "04", title: "Serve", body: "wizz dev server-renders each route; the router adopts the markup and wires listeners." }
+  ];
+
+  const tiles = [
+    { id: "t1", href: "/docs/getting-started", kicker: "Start", title: "Installation & Setup", body: "Install the CLI, scaffold, and run the dev server." },
+    { id: "t2", href: "/docs/components", kicker: "Learn", title: "Components & Templating", body: "Single-root templates, props, head, scoped styles." },
+    { id: "t3", href: "/docs/reactivity", kicker: "Learn", title: "State & Reactivity", body: "let state, batching, events, lists, persist()." },
+    { id: "t4", href: "/docs/api", kicker: "Reference", title: "API Reference", body: "Every hook, directive, module export, and compiler entry." },
+    { id: "t5", href: "/docs/cli", kicker: "Tooling", title: "CLI", body: "init, dev, build, --json, --adapter node, update." },
+    { id: "t6", href: "/docs/mcp", kicker: "Tooling", title: "MCP Server", body: "Six tools for agents, with a fixed root and gated writes." }
+  ];
+
+  function trackSheen(event) {
+    const card = event.target.closest(".sheen");
+    if (!card) return;
+    const rect = card.getBoundingClientRect();
+    card.style.setProperty("--mx", event.clientX - rect.left + "px");
+    card.style.setProperty("--my", event.clientY - rect.top + "px");
+  }
+</script>
+
+<wizz:head>
+  <title>Wizz.js — the zero-dependency compiled component framework</title>
+  <meta name="description" content="Wizz.js compiles single-file .wizz components to platform-native DOM code, server-renders every page, and hydrates without a Virtual DOM or a single runtime dependency.">
+</wizz:head>
+
+<div class="site landing">
+  <TopNav section="home" />
+
+  <main id="main" class="page" on:pointermove={trackSheen}>
+    <section class="hero" aria-labelledby="hero-title">
+      <div class="copy">
+        <p class="rise kicker" style="--i: 0"><span class="badge badge-mint">v1.17 · syntax 1.4 · output 1.8</span><span class="badge badge-amber">0 dependencies</span></p>
+        <h1 id="hero-title" class="rise title" style="--i: 1">Components that compile to <span class="shine">the platform.</span></h1>
+        <p class="rise lede" style="--i: 2">Wizz.js turns single-file <code>.wizz</code> components into native DOM instructions and static scoped CSS. Every page server-renders, hydrates in place, and ships with no Virtual DOM and no runtime packages — this site included.</p>
+        <div class="rise cta" style="--i: 3">
+          <a class="btn btn-primary" href="/docs/getting-started">Get started <span class="icon icon-arrow" aria-hidden="true"></span></a>
+          <a class="btn" href="/docs/architecture">How it works</a>
+        </div>
+        <div class="rise install" style="--i: 4">
+          <CodeBlock code={installSnippet} lang="bash" title="terminal" />
+        </div>
+      </div>
+
+      <div class="rise demo glass sheen" style="--i: 3">
+        <div class="demo-head">
+          <span class="badge">Running on Wizz.js</span>
+          <span class="hint">open a second tab — it syncs</span>
+        </div>
+        <div class="demo-live">
+          <Counter label="Live counter" />
+        </div>
+        <div class="demo-code">
+          <CodeBlock code={counterSource} lang="wizz" title="Counter.wizz" />
+        </div>
+      </div>
+    </section>
+
+    <section class="band" aria-labelledby="features-title">
+      <header class="band-head">
+        <p class="eyebrow">Why Wizz</p>
+        <h2 id="features-title">Less runtime. More platform.</h2>
+      </header>
+      <div class="features">{#each features as feature (feature.id)}<article class="feature glass sheen reveal"><span class="f-icon"><span class={feature.icon} aria-hidden="true"></span></span><h3>{feature.title}</h3><p>{feature.body}</p></article>{/each}</div>
+    </section>
+
+    <section class="band" aria-labelledby="pipeline-title">
+      <header class="band-head">
+        <p class="eyebrow">Under the hood</p>
+        <h2 id="pipeline-title">From <code>.wizz</code> to pixels in four stages</h2>
+      </header>
+      <ol class="pipeline">{#each steps as step (step.id)}<li class="step glass reveal"><span class="n">{step.n}</span><h3>{step.title}</h3><p>{step.body}</p></li>{/each}</ol>
+    </section>
+
+    <section class="band" aria-labelledby="docs-title">
+      <header class="band-head">
+        <p class="eyebrow">Documentation</p>
+        <h2 id="docs-title">Everything, in depth</h2>
+      </header>
+      <div class="tiles">{#each tiles as tile (tile.id)}<a class="tile glass sheen reveal" href={tile.href}><span class="t-kicker">{tile.kicker}</span><span class="t-title">{tile.title}</span><span class="t-body">{tile.body}</span><span class="t-go icon icon-arrow" aria-hidden="true"></span></a>{/each}</div>
+    </section>
+
+    <footer class="foot">
+      <p>Built with Wizz.js and nothing else · MIT licensed · <a href="https://github.com/duncantidd/wizz.js">github.com/duncantidd/wizz.js</a></p>
+    </footer>
+  </main>
+</div>
+
+<wizz:style>
+  .page {
+    inline-size: 100%;
+    max-inline-size: 78rem;
+    margin-inline: auto;
+    padding-inline: clamp(1rem, 3vw, 2rem);
+    view-transition-name: doc-main;
+  }
+
+  .hero {
+    display: grid;
+    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
+    gap: clamp(2rem, 5vw, 4rem);
+    align-items: center;
+    padding-block: clamp(3rem, 8vw, 6rem) clamp(2rem, 5vw, 4rem);
+  }
+
+  .kicker {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin: 0;
+  }
+
+  .title {
+    margin: 1.25rem 0 0;
+    font-size: clamp(2.6rem, 1.6rem + 4.4vw, 4.6rem);
+    font-weight: 850;
+    line-height: 1.02;
+    letter-spacing: -0.045em;
+    text-shadow: var(--ink-shadow);
+  }
+
+  .shine {
+    background: linear-gradient(100deg, var(--cyan), var(--accent) 45%, var(--amber) 80%, var(--cyan));
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    text-shadow: none;
+    animation: shine 9s linear infinite;
+  }
+
+  @keyframes shine {
+    to { background-position: -200% 0; }
+  }
+
+  .lede {
+    max-inline-size: 36rem;
+    margin: 1.25rem 0 0;
+    color: var(--ink-2);
+    font-size: 1.15rem;
+    line-height: 1.7;
+  }
+
+  .lede code {
+    padding: 0.1em 0.35em;
+    border-radius: 6px;
+    background-color: var(--well);
+    color: var(--ink);
+    font-size: 0.9em;
+  }
+
+  .cta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    margin-block-start: 2rem;
+  }
+
+  .install {
+    max-inline-size: 36rem;
+    margin-block-start: 1.75rem;
+  }
+
+  .demo {
+    display: grid;
+    gap: 1.1rem;
+    padding: clamp(1rem, 3vw, 1.5rem);
+  }
+
+  .demo-head {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .hint {
+    color: var(--ink-3);
+    font-size: 0.8rem;
+  }
+
+  .demo-live {
+    padding: 1.5rem 1rem;
+    border-radius: var(--r-md);
+    border: 1px solid var(--well-border);
+    background:
+      radial-gradient(100% 120% at 50% 0%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 70%),
+      var(--well);
+  }
+
+  .band {
+    padding-block: clamp(2.5rem, 6vw, 4.5rem);
+  }
+
+  .band-head {
+    max-inline-size: 40rem;
+    margin-block-end: 2rem;
+  }
+
+  .eyebrow {
+    margin: 0 0 0.5rem;
+    color: var(--accent);
+    font-size: 0.78rem;
+    font-weight: 750;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+  }
+
+  h2 {
+    margin: 0;
+    font-size: clamp(1.8rem, 1.3rem + 2vw, 2.6rem);
+    font-weight: 800;
+    letter-spacing: -0.035em;
+  }
+
+  h2 code {
+    font-size: 0.85em;
+    color: var(--accent);
+  }
+
+  .features {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr));
+    gap: 1rem;
+  }
+
+  .feature {
+    padding: 1.5rem;
+    transition: transform var(--dur) var(--ease-out);
+  }
+
+  .feature:hover {
+    transform: translateY(-3px);
+  }
+
+  .f-icon {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 2.6rem;
+    block-size: 2.6rem;
+    border-radius: var(--r-sm);
+    border: 1px solid color-mix(in oklch, var(--accent) 35%, transparent);
+    background: linear-gradient(135deg, color-mix(in oklch, var(--cyan) 22%, transparent), color-mix(in oklch, var(--accent) 22%, transparent));
+    color: var(--ink);
+    font-size: 1.15rem;
+    box-shadow: inset 0 1px 0 var(--glint);
+  }
+
+  .feature h3 {
+    margin: 1rem 0 0.4rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+  }
+
+  .feature p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 0.95rem;
+    line-height: 1.65;
+  }
+
+  .pipeline {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: none;
+  }
+
+  .step {
+    position: relative;
+    padding: 1.5rem;
+  }
+
+  .n {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--accent);
+  }
+
+  .step h3 {
+    margin: 0.5rem 0 0.35rem;
+    font-size: 1.2rem;
+  }
+
+  .step p {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 0.93rem;
+    line-height: 1.6;
+  }
+
+  .tiles {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+    gap: 1rem;
+  }
+
+  .tile {
+    display: grid;
+    gap: 0.3rem;
+    padding: 1.4rem 3.25rem 1.4rem 1.4rem;
+    color: var(--ink);
+    text-decoration: none;
+    transition: transform var(--dur) var(--ease-out);
+  }
+
+  .tile:hover {
+    color: var(--ink);
+    transform: translateY(-3px);
+  }
+
+  .t-kicker {
+    color: var(--ink-3);
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .t-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+  }
+
+  .t-body {
+    color: var(--ink-2);
+    font-size: 0.92rem;
+  }
+
+  .t-go {
+    position: absolute;
+    inset-block-start: 1.4rem;
+    inset-inline-end: 1.4rem;
+    color: var(--accent);
+    transition: transform var(--dur) var(--ease-out);
+  }
+
+  .tile:hover .t-go {
+    transform: translateX(4px);
+  }
+
+  .foot {
+    padding-block: 2rem 3rem;
+    border-block-start: 1px solid var(--hairline);
+    color: var(--ink-3);
+    font-size: 0.88rem;
+    text-align: center;
+  }
+
+  @media (max-width: 60rem) {
+    .hero {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .shine {
+      animation: none;
+    }
+  }
+</wizz:style>

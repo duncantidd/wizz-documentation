@@ -1,0 +1,172 @@
+<script>
+  import TopNav from "../../components/TopNav.wizz";
+  import Sidebar from "../../components/Sidebar.wizz";
+  import Toc from "../../components/Toc.wizz";
+  import CodeBlock from "../../components/CodeBlock.wizz";
+  import Callout from "../../components/Callout.wizz";
+  import PageNav from "../../components/PageNav.wizz";
+
+  const toc = [
+    { id: "requirements", label: "Requirements" },
+    { id: "install", label: "Install the CLI" },
+    { id: "scaffold", label: "Scaffold a project" },
+    { id: "structure", label: "Project structure" },
+    { id: "first-component", label: "Your first component" },
+    { id: "dev-server", label: "Development server" },
+    { id: "build", label: "Production build" },
+    { id: "editor", label: "Editor setup" }
+  ];
+
+  const installCmd = `curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/install-cli.sh | bash`;
+
+  const pathCmd = `# Bash / Zsh — add to your shell profile, then open a new shell
+export PATH="$HOME/.local/bin:$PATH"
+
+wizz --version
+# wizz 1.17.0 (compiler 1.17.0, syntax 1.4.1, output 1.8.2)`;
+
+  const scaffoldCmd = `wizz init my-app
+cd my-app
+wizz dev`;
+
+  const treeText = `my-app/
+├── index.html               # Document shell: <div id="app"> + /runtime/main.js
+├── App.css                  # Global tokens, reset, and layout
+├── README.md
+└── src/
+    ├── App.wizz             # Landing page → /
+    ├── pages/
+    │   └── Home.wizz        # Routed page → /home
+    ├── components/
+    │   ├── Counter.wizz     # Imported component with persisted state
+    │   └── Card.wizz
+    └── server/
+        └── api/
+            └── health.js    # Server handler → /api/health`;
+
+  const shellHtml = `<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="/App.css">
+</head>
+<body>
+  <div id="app"></div>
+  <script type="module" src="/runtime/main.js"><\/script>
+</body>
+</html>`;
+
+  const helloSource = `<script>
+  let name = "world";
+
+  function handleInput(event) {
+    name = event.target.value;
+  }
+<\/script>
+
+<wizz:head>
+  <title>Hello - My Wizz App</title>
+</wizz:head>
+
+<main class="hello">
+  <h1>Hello {name}!</h1>
+  <input value={name} on:input={handleInput} aria-label="Name" />
+</main>
+
+<wizz:style>
+  .hello { display: grid; gap: 1rem; padding: 4rem; }
+  h1 { font-size: 3rem; }
+</wizz:style>`;
+
+  const devCmd = `wizz dev                 # http://127.0.0.1:3000
+wizz dev --port 4321     # pick a port
+wizz dev --host 0.0.0.0  # opt out of loopback (remote dev only)`;
+
+  const buildCmd = `wizz build                     # src → dist (static)
+wizz build --adapter node      # + dist/server.mjs (SSR + API host)
+node dist/server.mjs           # serves http://localhost:8080
+PORT=3000 node dist/server.mjs`;
+
+  const vscodeCmd = `wizz install-vscode-extension`;
+</script>
+
+<wizz:head>
+  <title>Installation & Setup — Wizz.js Docs</title>
+  <meta name="description" content="Install the Wizz CLI, scaffold a project, write your first .wizz component, and run the dev server.">
+</wizz:head>
+
+<div class="site">
+  <TopNav section="docs" showMenu={true} />
+  <div class="doc-shell">
+    <Sidebar current="/docs/getting-started" />
+    <main id="main" class="doc-main glass">
+      <article class="prose">
+        <header>
+          <p class="eyebrow rise" style="--i: 0">Getting Started</p>
+          <h1 class="rise" style="--i: 1">Installation & Setup</h1>
+          <p class="lead rise" style="--i: 2">Wizz installs without npm or a package registry. One command fetches the CLI — compiler, runtime, starter templates, and build tooling — and from there a project is just <code>index.html</code>, <code>App.css</code>, and <code>src/**/*.wizz</code>.</p>
+        </header>
+
+        <h2 id="requirements" class="reveal">Requirements</h2>
+        <ul>
+          <li><strong>Node.js 18 or newer</strong> — for the CLI, the compiler, and the dev server.</li>
+          <li><strong>curl</strong> and <strong>tar</strong> — used once by the installer.</li>
+          <li><strong>A current evergreen browser</strong> with native ES modules, dynamic <code>import()</code>, and <code>queueMicrotask()</code>.</li>
+        </ul>
+        <p>That is the whole list. Wizz has <strong>no runtime dependencies</strong>: nothing is added to your project's <code>node_modules</code>, and the browser never sees the compiler.</p>
+
+        <h2 id="install" class="reveal">Install the CLI</h2>
+        <p>The installer resolves the latest GitHub release, downloads its <code>{"wizz-<version>.tgz"}</code> asset, and installs it. No administrator privileges, no shell-profile edits.</p>
+        <CodeBlock code={installCmd} lang="bash" title="terminal" />
+        <p>The framework lands in <code>$XDG_DATA_HOME/wizz</code> (default <code>~/.local/share/wizz</code>) and the <code>wizz</code> launcher in <code>$XDG_BIN_HOME</code> (default <code>~/.local/bin</code>). Make sure the launcher directory is on your <code>PATH</code>:</p>
+        <CodeBlock code={pathCmd} lang="bash" title="~/.bashrc" />
+        <Callout kind="tip" title="Upgrading" body="The install is a snapshot, not a link to a repository. Run wizz update to fetch the latest release and swap it in place — the old installation is kept aside until the new one is ready, and the launcher keeps working." />
+
+        <h2 id="scaffold" class="reveal">Scaffold a project</h2>
+        <p><code>wizz init</code> writes the showcase starter: a design-token stylesheet, a landing page with a reactive document head, a counter whose value persists across reloads and tabs, a server-rendered <code>/home</code> page, and a sample API route. It runs correctly with no manual editing.</p>
+        <CodeBlock code={scaffoldCmd} lang="bash" title="terminal" />
+        <Callout kind="note" title="Safe by default" body="wizz init refuses to write into a non-empty directory unless you pass --force, and even then it never overwrites an existing file." />
+
+        <h2 id="structure" class="reveal">Project structure</h2>
+        <p>A Wizz project contains <strong>only source files</strong>. The compiler, runtime, and CLI live in the managed install, so there is no framework code to vendor or keep in sync.</p>
+        <CodeBlock code={treeText} lang="text" title="my-app" />
+        <div class="grid-2">
+          <div class="mini-card"><h3>You edit</h3><p><code>index.html</code>, <code>App.css</code>, <code>src/**/*.wizz</code>, and <code>src/server/api/*.js</code>.</p></div>
+          <div class="mini-card"><h3>Wizz generates</h3><p><code>dist/</code> — compiled modules, a copy of the runtime, the route manifest, and extracted <code>app.css</code>. Treat it as disposable.</p></div>
+        </div>
+        <p>The document shell only owns the mount point and the runtime entry. The router finds <code>#app</code>, loads the module for the current path, and mounts — or hydrates — it.</p>
+        <CodeBlock code={shellHtml} lang="wizz" title="index.html" />
+        <Callout kind="warn" title="Nested routes and relative URLs" body="Link global assets with absolute paths (/App.css, /runtime/main.js). A relative ./App.css would resolve to /docs/App.css on a nested page like /docs/routing." />
+
+        <h2 id="first-component" class="reveal">Your first component</h2>
+        <p>A <code>.wizz</code> file is a template with exactly one root element, plus optional <code>{"<script>"}</code>, <code>{"<wizz:head>"}</code>, and <code>{"<wizz:style>"}</code> blocks. Top-level <code>let</code> declarations are reactive; event directives bind native events.</p>
+        <CodeBlock code={helloSource} lang="wizz" title="src/pages/Hello.wizz → /hello" />
+        <p>Save it under <code>src/pages/</code> and the next rebuild gives it a route. Typing in the input reassigns <code>name</code>; Wizz batches the change and updates the single text node that reads it on the next microtask.</p>
+
+        <h2 id="dev-server" class="reveal">Development server</h2>
+        <p><code>wizz dev</code> builds <code>src</code> into <code>dist</code>, serves it, and watches <code>.wizz</code> sources — with native file events plus a 250 ms polling fallback so mounted filesystems such as WSL's <code>/mnt/c</code> still rebuild. Rebuilds live-reload connected tabs over a dev-only Server-Sent Events channel at <code>/_wizz/reload</code>.</p>
+        <CodeBlock code={devCmd} lang="bash" title="terminal" />
+        <ul>
+          <li>Server-renderable routes arrive with markup already inside <code>#app</code> and hydrate on load.</li>
+          <li>Compiler errors are reported while the server stays up for the next fix.</li>
+          <li>The server binds to <strong>loopback</strong> by default — it has no auth or TLS and runs API handlers with your secrets loaded.</li>
+          <li>A taken port fails cleanly with a message naming the port and the <code>--port</code> flag.</li>
+        </ul>
+        <Callout kind="warn" title="WSL2 + /mnt/c: assets that never finish loading" body="Some Node 18 builds use libuv's io_uring backend, which can loop forever when streaming files from a Windows drive mounted in WSL2 — pages hang or the tab crashes. Start the server with UV_USE_IO_URING=0 wizz dev, or keep the project inside the Linux filesystem." />
+
+        <h2 id="build" class="reveal">Production build</h2>
+        <p><code>wizz build</code> compiles every <code>.wizz</code> file, writes the route manifest, copies the runtime, and extracts all scoped styles into <code>dist/app.css</code>. Add <code>--adapter node</code> to also emit a standalone SSR + API host.</p>
+        <CodeBlock code={buildCmd} lang="bash" title="terminal" />
+        <p>The <code>dist/</code> directory is self-contained: the node host imports only Node built-ins and the build's own artifacts. See <a href="/docs/server#deploy">Deploying with the node adapter</a> for the full contract.</p>
+
+        <h2 id="editor" class="reveal">Editor setup</h2>
+        <p>The first-party VS Code extension adds <code>.wizz</code> syntax highlighting, compiler diagnostics, component navigation, and build commands. With the CLI on your <code>PATH</code>:</p>
+        <CodeBlock code={vscodeCmd} lang="bash" title="terminal" />
+        <p>Without the CLI, download <code>{"wizz-vscode-<version>.vsix"}</code> from a release page and use <strong>Extensions → Install from VSIX…</strong>.</p>
+      </article>
+      <PageNav prevHref="/" prevLabel="Overview" nextHref="/docs/architecture" nextLabel="Architecture & Philosophy" />
+    </main>
+    <Toc items={toc} />
+  </div>
+</div>

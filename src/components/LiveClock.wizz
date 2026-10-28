@@ -1,0 +1,50 @@
+<script>
+  let time = "--:--:--";
+  let ticks = 0;
+  let timerId = null;
+
+  function tick() {
+    time = new Date().toLocaleTimeString();
+    ticks += 1;
+  }
+
+  onMount(() => {
+    tick();
+    timerId = setInterval(tick, 1000);
+  });
+
+  onDestroy(() => {
+    clearInterval(timerId);
+  });
+</script>
+
+<div class="clock">
+  <time class="time">{time}</time>
+  <p class="ticks">onMount started an interval · <strong>{ticks}</strong> ticks · onDestroy clears it</p>
+</div>
+
+<wizz:style>
+  .clock {
+    display: grid;
+    gap: 0.35rem;
+  }
+
+  .time {
+    font-family: var(--font-mono);
+    font-size: clamp(1.8rem, 1.4rem + 2vw, 2.4rem);
+    font-weight: 700;
+    color: var(--ink);
+    font-variant-numeric: tabular-nums;
+  }
+
+  .ticks {
+    margin: 0;
+    color: var(--ink-3);
+    font-size: 0.85rem;
+  }
+
+  .ticks strong {
+    color: var(--ink);
+    font-family: var(--font-mono);
+  }
+</wizz:style>

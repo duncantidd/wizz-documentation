@@ -1,0 +1,194 @@
+<script>
+  import CodeBlock from "./CodeBlock.wizz";
+
+  // One reference entry: signature, parameters, return value, and a runnable
+  // example. params: [{ name, type, desc }].
+  export let anchor = "";
+  export let name = "";
+  export let kind = "function";
+  export let origin = "";
+  export let signature = "";
+  export let summary = "";
+  export let params = [];
+  export let returns = "";
+  export let example = "";
+  export let exampleLang = "wizz";
+  export let exampleTitle = "";
+
+  const rows = params.map((param) => ({ ...param, key: param.name }));
+  // Optional sections are hidden by class rather than {#if}: bindings inside
+  // an untaken branch would have no nodes to update.
+  const paramsClass = rows.length > 0 ? "table-scroll" : "table-scroll is-hidden";
+  const returnsClass = returns !== "" ? "returns" : "returns is-hidden";
+  const selfHref = "#" + anchor;
+  // Interpolations must never be empty strings: SSR would emit no text node
+  // for hydration to adopt.
+  const returnsText = returns === "" ? "—" : returns;
+  const originText = origin === "" ? "wizz" : origin;
+</script>
+
+<article class="entry sheen" id={anchor}>
+  <header class="head">
+    <h3 class="name"><a class="self" href={selfHref}>{name}</a></h3>
+    <span class="kind">{kind}</span>
+    <span class="origin">{originText}</span>
+  </header>
+  <pre class="sig"><code>{signature}</code></pre>
+  <p class="summary">{summary}</p>
+  <div class={paramsClass}>
+      <table class="params">
+        <thead>
+          <tr><th scope="col">Parameter</th><th scope="col">Type</th><th scope="col">Description</th></tr>
+        </thead>
+        <tbody>{#each rows as row (row.key)}<tr><td><code>{row.name}</code></td><td><code class="type">{row.type}</code></td><td>{row.desc}</td></tr>{/each}</tbody>
+      </table>
+  </div>
+  <p class={returnsClass}><span class="ret-label">Returns</span><span>{returnsText}</span></p>
+  <div class="example">
+    <CodeBlock code={example} lang={exampleLang} title={exampleTitle} />
+  </div>
+</article>
+
+<wizz:style>
+  .entry {
+    display: grid;
+    gap: 0.9rem;
+    margin-block-start: 1.5rem;
+    padding: clamp(1rem, 3vw, 1.5rem);
+    border-radius: var(--r-lg);
+    border: 1px solid var(--hairline);
+    background-color: var(--hover-fill);
+    box-shadow: inset 0 1px 0 var(--glint);
+    scroll-margin-block-start: calc(var(--chrome-top) + 1rem);
+  }
+
+  .head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .name {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 1.15rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+
+  .self {
+    color: var(--ink);
+    text-decoration: none;
+  }
+
+  .self:hover {
+    color: var(--accent);
+  }
+
+  .kind {
+    padding: 0.12rem 0.55rem;
+    border-radius: var(--r-pill);
+    border: 1px solid color-mix(in oklch, var(--accent) 40%, transparent);
+    background-color: color-mix(in oklch, var(--accent) 14%, transparent);
+    color: var(--accent-strong);
+    font-size: 0.7rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+  }
+
+  .origin {
+    margin-inline-start: auto;
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+  }
+
+  .sig {
+    margin: 0;
+    padding: 0.7rem 0.95rem;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--well-border);
+    background-color: var(--well);
+    color: var(--tok-fn);
+    font-size: 0.88rem;
+    overflow-x: auto;
+    white-space: pre-wrap;
+  }
+
+  .summary {
+    margin: 0;
+    color: var(--ink-2);
+    line-height: 1.7;
+  }
+
+  .params {
+    inline-size: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    border: 1px solid var(--well-border);
+    border-radius: var(--r-sm);
+    overflow: hidden;
+    background-color: var(--well);
+    font-size: 0.88rem;
+  }
+
+  th,
+  td {
+    padding: 0.55rem 0.8rem;
+    text-align: start;
+    vertical-align: top;
+    border-block-end: 1px solid var(--well-border);
+    color: var(--ink-2);
+  }
+
+  th {
+    color: var(--ink);
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    background-color: var(--hover-fill);
+  }
+
+  tr:last-child td {
+    border-block-end: 0;
+  }
+
+  td code {
+    color: var(--ink);
+    font-size: 0.85em;
+    white-space: nowrap;
+  }
+
+  td code.type {
+    color: var(--tok-tag);
+  }
+
+  .table-scroll {
+    overflow-x: auto;
+  }
+
+  .returns {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 0.95rem;
+  }
+
+  .is-hidden {
+    display: none;
+  }
+
+  .ret-label {
+    color: var(--mint);
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding-block-start: 0.2rem;
+  }
+</wizz:style>

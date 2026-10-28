@@ -1,0 +1,59 @@
+<script>
+  // A pure presentational child: every value arrives precomputed as a prop,
+  // and the parent's setProps() call rerenders it in place.
+  export let label = "Meter";
+  export let value = 0;
+  export let barStyle = "";
+  export let meterClass = "meter calm";
+</script>
+
+<div class={meterClass}>
+  <div class="row"><span class="name">{label}</span><span class="num">{value}%</span></div>
+  <div class="rail"><span class="fill" style={barStyle}></span></div>
+</div>
+
+<wizz:style>
+  .meter {
+    --tone: var(--cyan);
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .warm { --tone: var(--amber); }
+  .hot { --tone: var(--rose); }
+
+  .row {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9rem;
+  }
+
+  .name {
+    color: var(--ink-2);
+    font-weight: 600;
+  }
+
+  .num {
+    color: var(--ink);
+    font-family: var(--font-mono);
+    font-weight: 700;
+  }
+
+  .rail {
+    block-size: 0.7rem;
+    border-radius: var(--r-pill);
+    background-color: var(--hover-fill);
+    border: 1px solid var(--hairline);
+    overflow: hidden;
+  }
+
+  .fill {
+    display: block;
+    block-size: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, color-mix(in oklch, var(--tone) 50%, transparent), var(--tone));
+    box-shadow: 0 0 14px var(--tone);
+    transform-origin: 0 50%;
+    transition: transform var(--dur) var(--ease-out);
+  }
+</wizz:style>

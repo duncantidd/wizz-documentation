@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8">
+  <!-- Mobile devices must render at CSS-pixel width, or everything zooms out. -->
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <!-- Tints the mobile browser UI to match the page background. -->
+  <meta name="theme-color" content="#070913">
+  <meta name="color-scheme" content="dark light">
+  <!-- Apply persisted theme + sidebar state before first paint. persist()
+       stores JSON-encoded values, so the same keys the components use are
+       read here; hydration then takes over. -->
+  <script>
+    (function () {
+      var root = document.documentElement;
+      try {
+        var theme = JSON.parse(localStorage.getItem("wizz_docs_theme"));
+        if (theme === "light" || theme === "dark") root.dataset.theme = theme;
+        var sidebar = JSON.parse(localStorage.getItem("wizz_docs_sidebar"));
+        if (sidebar === "collapsed" || sidebar === "open") root.dataset.sidebar = sidebar;
+      } catch (error) {}
+    })();
+  </script>
+  <!-- Import the stylesheet App.css -->
+  <link rel="stylesheet" href="/App.css">
+</head>
+<body>
+  <div id="app"></div>
+
+  <script type="module" src="/runtime/main.js"></script>
+</body>
+</html>

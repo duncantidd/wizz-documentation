@@ -1,0 +1,286 @@
+<script>
+  // Persisted, keyed list. Rows carry precomputed classes because {#each}
+  // bodies take no nested blocks; one delegated listener handles every row.
+  let todos = persist("wizz_docs_todos", [
+    { id: 1, title: "Read the component contract", done: true, rowClass: "item is-done", checked: "true" },
+    { id: 2, title: "Build a keyed list", done: false, rowClass: "item", checked: "false" },
+    { id: 3, title: "Ship with zero dependencies", done: false, rowClass: "item", checked: "false" }
+  ]);
+
+  let draft = "";
+  let filter = "all";
+  let remaining = "";
+  let tabAll = "tab is-active";
+  let tabActive = "tab";
+  let tabDone = "tab";
+
+  function row(item) {
+    return {
+      id: item.id,
+      title: item.title,
+      done: item.done,
+      rowClass: item.done ? "item is-done" : "item",
+      checked: item.done ? "true" : "false"
+    };
+  }
+
+  function summarize() {
+    const open = todos.filter((item) => !item.done).length;
+    remaining = open === 1 ? "1 item left" : open + " items left";
+  }
+
+  function handleDraft(event) {
+    draft = event.target.value;
+  }
+
+  function addTodo(event) {
+    event.preventDefault();
+    const title = draft.trim();
+    if (title === "") return;
+    const nextId = todos.reduce((max, item) => Math.max(max, item.id), 0) + 1;
+    todos = [...todos, row({ id: nextId, title, done: false })];
+    draft = "";
+    event.target.reset();
+    summarize();
+  }
+
+  function handleListClick(event) {
+    const rowNode = event.target.closest("[data-id]");
+    if (!rowNode) return;
+    const id = Number(rowNode.dataset.id);
+    if (event.target.closest("[data-action='remove']")) {
+      todos = todos.filter((item) => item.id !== id);
+    } else if (event.target.closest("[data-action='toggle']")) {
+      todos = todos.map((item) => (item.id === id ? row({ ...item, done: !item.done }) : item));
+    }
+    summarize();
+  }
+
+  function handleFilter(event) {
+    const tab = event.target.closest("[data-filter]");
+    if (!tab) return;
+    filter = tab.dataset.filter;
+    tabAll = filter === "all" ? "tab is-active" : "tab";
+    tabActive = filter === "active" ? "tab is-active" : "tab";
+    tabDone = filter === "done" ? "tab is-active" : "tab";
+  }
+
+  function clearDone() {
+    todos = todos.filter((item) => !item.done);
+    summarize();
+  }
+
+  // Computed at init (server and client) and again after hydration restores
+  // the persisted list.
+  summarize();
+  onMount(summarize);
+</script>
+
+<div class="todo" data-filter={filter}>
+  <form class="add" on:submit={addTodo}>
+    <input type="text" placeholder="What needs doing?" aria-label="New todo" on:input={handleDraft} />
+    <button type="submit" class="add-btn">Add</button>
+  </form>
+  <ul class="list" on:click={handleListClick}>{#each todos as item (item.id)}<li class={item.rowClass} data-id={item.id}><button type="button" class="check" data-action="toggle" aria-pressed={item.checked} aria-label="Toggle done"></button><span class="title">{item.title}</span><button type="button" class="remove" data-action="remove" aria-label="Remove">×</button></li>{/each}</ul>
+  <div class="footer">
+    <span class="left">{remaining}</span>
+    <div class="tabs" role="group" aria-label="Filter" on:click={handleFilter}>
+      <button type="button" class={tabAll} data-filter="all">All</button>
+      <button type="button" class={tabActive} data-filter="active">Active</button>
+      <button type="button" class={tabDone} data-filter="done">Done</button>
+    </div>
+    <button type="button" class="clear" on:click={clearDone}>Clear done</button>
+  </div>
+</div>
+
+<wizz:style>
+  .todo {
+    display: grid;
+    gap: 0.85rem;
+  }
+
+  .add {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .add input {
+    flex: 1;
+    min-inline-size: 0;
+    min-block-size: 2.75rem;
+    padding-inline: 1rem;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--hairline);
+    background-color: var(--well);
+    color: var(--ink);
+    font: inherit;
+    box-shadow: inset 0 2px 6px light-dark(oklch(0.3 0.05 270 / 0.05), oklch(0 0 0 / 0.3));
+    transition: border-color var(--dur) var(--ease-out), box-shadow var(--dur) var(--ease-out);
+  }
+
+  .add input:focus-visible {
+    outline: none;
+    border-color: var(--focus-ring);
+    box-shadow: 0 0 0 4px color-mix(in oklch, var(--focus-ring) 22%, transparent);
+  }
+
+  .add-btn {
+    min-block-size: 2.75rem;
+    padding-inline: 1.25rem;
+    border: 0;
+    border-radius: var(--r-pill);
+    background: linear-gradient(135deg, oklch(0.88 0.12 210), oklch(0.8 0.14 292));
+    color: oklch(0.16 0.03 270);
+    font-weight: 700;
+    cursor: pointer;
+    transition: transform var(--dur-fast) var(--ease-out);
+  }
+
+  .add-btn:active {
+    transform: scale(0.95);
+  }
+
+  .list {
+    display: grid;
+    gap: 0.4rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.55rem 0.6rem 0.55rem 0.75rem;
+    border-radius: var(--r-sm);
+    border: 1px solid var(--hairline);
+    background-color: var(--hover-fill);
+    animation: item-in 360ms var(--ease-out) both;
+  }
+
+  @keyframes item-in {
+    from { opacity: 0; transform: translateY(-6px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  [data-filter="active"] .is-done,
+  [data-filter="done"] .item:not(.is-done) {
+    display: none;
+  }
+
+  .check {
+    position: relative;
+    inline-size: 1.35rem;
+    block-size: 1.35rem;
+    flex: none;
+    border-radius: 50%;
+    border: 1.5px solid var(--ink-3);
+    background: transparent;
+    cursor: pointer;
+    transition: background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+
+  .is-done .check {
+    border-color: var(--mint);
+    background-color: var(--mint);
+  }
+
+  .is-done .check::after {
+    content: "";
+    position: absolute;
+    inset: 0.28rem 0.42rem 0.36rem;
+    border: solid oklch(0.18 0.03 160);
+    border-width: 0 2px 2px 0;
+    transform: rotate(45deg);
+    animation: tick 260ms var(--ease-spring) both;
+  }
+
+  @keyframes tick {
+    from { transform: rotate(45deg) scale(0); }
+    to { transform: rotate(45deg) scale(1); }
+  }
+
+  .title {
+    flex: 1;
+    color: var(--ink);
+    transition: color var(--dur) var(--ease-out);
+  }
+
+  .is-done .title {
+    color: var(--ink-3);
+    text-decoration: line-through;
+  }
+
+  .remove {
+    inline-size: 2rem;
+    block-size: 2rem;
+    border: 0;
+    border-radius: 50%;
+    background: transparent;
+    color: var(--ink-3);
+    font-size: 1.2rem;
+    cursor: pointer;
+    opacity: 0.6;
+    transition: opacity var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), background-color var(--dur-fast) var(--ease-out);
+  }
+
+  .item:hover .remove,
+  .remove:focus-visible {
+    opacity: 1;
+  }
+
+  .remove:hover {
+    color: var(--rose);
+    background-color: color-mix(in oklch, var(--rose) 14%, transparent);
+  }
+
+  .footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.75rem;
+    color: var(--ink-3);
+    font-size: 0.85rem;
+  }
+
+  .left {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .tabs {
+    display: inline-flex;
+    gap: 0.2rem;
+    margin-inline: auto;
+    padding: 0.2rem;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--hairline);
+    background-color: var(--well);
+  }
+
+  .tab,
+  .clear {
+    min-block-size: 2rem;
+    padding-inline: 0.85rem;
+    border: 1px solid transparent;
+    border-radius: var(--r-pill);
+    background: transparent;
+    color: var(--ink-3);
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out);
+  }
+
+  .tab:hover,
+  .clear:hover {
+    color: var(--ink);
+  }
+
+  .tab.is-active {
+    color: var(--ink);
+    background-color: var(--active-fill);
+    border-color: color-mix(in oklch, var(--accent) 35%, transparent);
+    box-shadow: inset 0 1px 0 var(--glint);
+  }
+</wizz:style>

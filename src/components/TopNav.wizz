@@ -1,0 +1,694 @@
+<script>
+  // section: which top-level link is current ("home", "docs", "api", "cli",
+  // "mcp", "examples"). showMenu adds the sidebar toggle on docs pages.
+  export let section = "docs";
+  export let showMenu = false;
+
+  // Persisted across reloads and synchronized across tabs by the runtime.
+  let theme = persist("wizz_docs_theme", "dark");
+  let sidebar = persist("wizz_docs_sidebar", "open");
+
+  let themeIcon = "icon icon-sun";
+  let themeLabel = "Switch to light theme";
+  let menuExpanded = "true";
+  // {#if} branches are chosen at mount and a dynamic binding inside an
+  // untaken branch has no node to update, so the toggle always renders and
+  // pages without a sidebar hide it with a class.
+  const menuClass = showMenu ? "icon-btn menu" : "icon-btn menu is-hidden";
+
+  const LINKS = [
+    { id: "docs", label: "Docs", href: "/docs/getting-started" },
+    { id: "api", label: "API", href: "/docs/api" },
+    { id: "cli", label: "CLI", href: "/docs/cli" },
+    { id: "mcp", label: "MCP", href: "/docs/mcp" },
+    { id: "examples", label: "Examples", href: "/docs/examples" }
+  ];
+
+  let links = LINKS.map((link) => ({
+    ...link,
+    current: link.id === section ? "page" : "false",
+    linkClass: link.id === section ? "link is-active" : "link"
+  }));
+
+  // Quick-jump index: every page plus its key sections.
+  const INDEX = [
+    ["Getting Started", "Install the CLI", "/docs/getting-started#install", "curl installer node path"],
+    ["Getting Started", "Scaffold a project", "/docs/getting-started#scaffold", "wizz init starter"],
+    ["Getting Started", "Project structure", "/docs/getting-started#structure", "layout src pages components dist"],
+    ["Getting Started", "Your first component", "/docs/getting-started#first-component", "counter hello"],
+    ["Getting Started", "Development server", "/docs/getting-started#dev-server", "wizz dev live reload port"],
+    ["Getting Started", "Production build", "/docs/getting-started#build", "wizz build dist deploy"],
+    ["Core Concepts", "Philosophy: zero dependencies", "/docs/architecture#philosophy", "why no virtual dom"],
+    ["Core Concepts", "Compiler pipeline", "/docs/architecture#pipeline", "parse analyze generate under the hood"],
+    ["Core Concepts", "Generated output", "/docs/architecture#compiled-output", "mountComponent module"],
+    ["Core Concepts", "SSR & hydration model", "/docs/architecture#ssr-hydration", "server render adopt"],
+    ["Core Concepts", "Versioning contract", "/docs/architecture#versioning", "syntax output semver"],
+    ["Components", "Component anatomy", "/docs/components#anatomy", "single root element template"],
+    ["Components", "Template expressions", "/docs/components#expressions", "interpolation safe subset"],
+    ["Components", "Props with export let", "/docs/components#props", "setProps parent child"],
+    ["Components", "Composition & imports", "/docs/components#composition", "nested components no slots"],
+    ["Components", "Scoped styles", "/docs/components#styles", "wizz:style data-wizz-s css"],
+    ["Components", "Document head", "/docs/components#head", "wizz:head title meta"],
+    ["Components", "Lifecycle hooks", "/docs/components#lifecycle", "onMount onDestroy"],
+    ["State & Reactivity", "Reactive let state", "/docs/reactivity#state", "assignment update"],
+    ["State & Reactivity", "Microtask batching", "/docs/reactivity#batching", "scheduler"],
+    ["State & Reactivity", "Event handling", "/docs/reactivity#events", "on:click directive"],
+    ["State & Reactivity", "Lists with each", "/docs/reactivity#lists", "keyed each delegation"],
+    ["State & Reactivity", "Conditional rendering", "/docs/reactivity#conditionals", "if else"],
+    ["State & Reactivity", "persist() cross-tab state", "/docs/reactivity#persist", "localStorage broadcastchannel"],
+    ["Routing", "File-system routes", "/docs/routing#file-routes", "pages manifest"],
+    ["Routing", "Navigation & links", "/docs/routing#navigation", "navigate pushState popstate"],
+    ["Routing", "Page transitions", "/docs/routing#transitions", "view transitions"],
+    ["Routing", "Guards & redirects", "/docs/routing#guards", "auth onMount"],
+    ["Server & SSR", "Server API routes", "/docs/server#api-routes", "src/server/api handler"],
+    ["Server & SSR", "Request context", "/docs/server#request", "frozen request json query"],
+    ["Server & SSR", "Secrets & .env.server", "/docs/server#secrets", "env keys"],
+    ["Server & SSR", "Deploy with the node adapter", "/docs/server#deploy", "server.mjs PORT"],
+    ["API Reference", "onMount()", "/docs/api#on-mount", "lifecycle"],
+    ["API Reference", "onDestroy()", "/docs/api#on-destroy", "cleanup"],
+    ["API Reference", "persist()", "/docs/api#persist", "storage"],
+    ["API Reference", "mountComponent()", "/docs/api#mount-component", "generated module"],
+    ["API Reference", "hydrateComponent()", "/docs/api#hydrate-component", "hydration"],
+    ["API Reference", "renderComponent()", "/docs/api#render-component", "server module"],
+    ["API Reference", "compile()", "/docs/api#compile", "compiler api"],
+    ["API Reference", "compileServer()", "/docs/api#compile-server", "compiler server"],
+    ["API Reference", "createRouter()", "/docs/api#create-router", "router navigate"],
+    ["API Reference", "Diagnostic codes", "/docs/api#diagnostics", "WIZZ-P WIZZ-G errors"],
+    ["CLI", "CLI overview", "/docs/cli", "commands"],
+    ["CLI", "wizz build --json", "/docs/cli#build", "diagnostics envelope"],
+    ["CLI", "wizz update", "/docs/cli#update", "upgrade"],
+    ["MCP", "MCP server overview", "/docs/mcp", "agents model context protocol"],
+    ["MCP", "MCP tools", "/docs/mcp#tools", "project_overview component_diagnostics"],
+    ["MCP", "MCP security model", "/docs/mcp#security", "allow-write root"],
+    ["Examples", "Live examples", "/docs/examples", "todo counter fetch clock"]
+  ].map(([group, title, href, terms], index) => ({
+    id: "r" + index,
+    group,
+    title,
+    href,
+    haystack: (group + " " + title + " " + terms).toLowerCase()
+  }));
+
+  let query = "";
+  let activeIndex = 0;
+  let results = [];
+  let resultCount = "";
+  let dialogClass = "spotlight glass-lens";
+  let matches = [];
+
+  function runSearch() {
+    const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
+    matches = INDEX.filter((entry) => terms.every((term) => entry.haystack.includes(term))).slice(0, 9);
+    if (activeIndex >= matches.length) activeIndex = 0;
+    results = matches.map((entry, index) => ({
+      ...entry,
+      position: String(index),
+      resultClass: index === activeIndex ? "result is-active" : "result",
+      selected: index === activeIndex ? "true" : "false"
+    }));
+    resultCount = matches.length === 1 ? "1 result" : matches.length + " results";
+    dialogClass = matches.length === 0 ? "spotlight glass-lens is-empty" : "spotlight glass-lens";
+  }
+
+  // Seed results at init so the server render already carries them (an
+  // empty-string interpolation renders no text node to hydrate against).
+  runSearch();
+
+  function searchDialog() {
+    return document.getElementById("wizz-search");
+  }
+
+  function openSearch() {
+    const dialog = searchDialog();
+    if (!dialog || dialog.open) return;
+    query = "";
+    activeIndex = 0;
+    runSearch();
+    dialog.showModal();
+    const input = document.getElementById("wizz-search-input");
+    if (input) {
+      input.value = "";
+      input.focus();
+    }
+  }
+
+  function closeSearch() {
+    const dialog = searchDialog();
+    if (dialog && dialog.open) dialog.close();
+  }
+
+  function handleQuery(event) {
+    query = event.target.value;
+    activeIndex = 0;
+    runSearch();
+  }
+
+  function handleSearchKeys(event) {
+    if (event.key === "ArrowDown" || event.key === "ArrowUp") {
+      event.preventDefault();
+      if (matches.length === 0) return;
+      const step = event.key === "ArrowDown" ? 1 : -1;
+      activeIndex = (activeIndex + step + matches.length) % matches.length;
+      runSearch();
+    } else if (event.key === "Enter") {
+      const target = matches[activeIndex];
+      if (target) {
+        event.preventDefault();
+        closeSearch();
+        window.location.assign(target.href);
+      }
+    }
+  }
+
+  function handleDialogClick(event) {
+    // A click on the dialog box itself (outside the panel) is a backdrop click.
+    if (event.target === event.currentTarget) closeSearch();
+    if (event.target.closest("a")) closeSearch();
+  }
+
+  function handleResultHover(event) {
+    const row = event.target.closest("[data-index]");
+    if (!row) return;
+    const index = Number(row.dataset.index);
+    if (index !== activeIndex) {
+      activeIndex = index;
+      runSearch();
+    }
+  }
+
+  function syncTheme() {
+    document.documentElement.dataset.theme = theme;
+    themeIcon = theme === "dark" ? "icon icon-sun" : "icon icon-moon";
+    themeLabel = theme === "dark" ? "Switch to light theme" : "Switch to dark theme";
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.setAttribute("content", theme === "dark" ? "#070913" : "#f3f5fc");
+  }
+
+  function toggleTheme() {
+    const apply = () => {
+      theme = theme === "dark" ? "light" : "dark";
+      syncTheme();
+    };
+    // Morph the whole page between themes where view transitions exist.
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (document.startViewTransition && !reduce) {
+      const transition = document.startViewTransition(apply);
+      // A skipped transition (hidden tab, rapid clicks) rejects these; the
+      // DOM update itself still runs.
+      transition.ready.catch(() => {});
+      transition.finished.catch(() => {});
+    } else {
+      apply();
+    }
+  }
+
+  function syncSidebar() {
+    document.documentElement.dataset.sidebar = sidebar;
+    menuExpanded = sidebar === "open" ? "true" : "false";
+  }
+
+  function toggleMenu() {
+    if (window.matchMedia("(max-width: 56rem)").matches) {
+      const root = document.documentElement;
+      const open = root.dataset.drawer === "open";
+      root.dataset.drawer = open ? "closed" : "open";
+      menuExpanded = open ? "false" : "true";
+      return;
+    }
+    sidebar = sidebar === "open" ? "collapsed" : "open";
+    syncSidebar();
+  }
+
+  function handleGlobalKeys(event) {
+    const typing = event.target.closest && event.target.closest("input, textarea, [contenteditable]");
+    if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "k") {
+      event.preventDefault();
+      openSearch();
+    } else if (event.key === "/" && !typing) {
+      event.preventDefault();
+      openSearch();
+    } else if (event.key === "Escape" && document.documentElement.dataset.drawer === "open") {
+      document.documentElement.dataset.drawer = "closed";
+      menuExpanded = "false";
+    }
+  }
+
+  function handleOutsideClick(event) {
+    const root = document.documentElement;
+    if (root.dataset.drawer !== "open") return;
+    if (event.target.closest("#docs-sidebar, .menu")) return;
+    root.dataset.drawer = "closed";
+    menuExpanded = "false";
+  }
+
+  onMount(() => {
+    syncTheme();
+    syncSidebar();
+    if (window.matchMedia("(max-width: 56rem)").matches) menuExpanded = "false";
+    runSearch();
+    window.addEventListener("keydown", handleGlobalKeys);
+    document.addEventListener("click", handleOutsideClick);
+  });
+
+  onDestroy(() => {
+    window.removeEventListener("keydown", handleGlobalKeys);
+    document.removeEventListener("click", handleOutsideClick);
+  });
+</script>
+
+<header class="dock-wrap">
+  <a class="skip" href="#main">Skip to content</a>
+  <div class="scroll-progress" aria-hidden="true"></div>
+  <nav class="dock glass-lens" aria-label="Primary">
+    <button type="button" class={menuClass} on:click={toggleMenu} aria-label="Toggle documentation sidebar" aria-controls="docs-sidebar" aria-expanded={menuExpanded}>
+      <span class="icon icon-menu" aria-hidden="true"></span>
+    </button>
+    <a class="brand" href="/" aria-label="Wizz.js home">
+      <span class="mark" aria-hidden="true">W</span>
+      <span class="word">Wizz<span class="dot">.js</span></span>
+      <span class="ver">1.17</span>
+    </a>
+    <ul class="links">{#each links as link (link.id)}<li><a class={link.linkClass} href={link.href} aria-current={link.current}>{link.label}</a></li>{/each}</ul>
+    <div class="actions">
+      <button type="button" class="search-trigger" on:click={openSearch} aria-haspopup="dialog" aria-controls="wizz-search">
+        <span class="icon icon-search" aria-hidden="true"></span>
+        <span class="search-text">Search docs…</span>
+        <kbd class="search-kbd">Ctrl K</kbd>
+      </button>
+      <button type="button" class="icon-btn theme" on:click={toggleTheme} aria-label={themeLabel} title={themeLabel}>
+        <span class={themeIcon} aria-hidden="true"></span>
+      </button>
+      <a class="icon-btn" href="https://github.com/duncantidd/wizz.js" aria-label="Wizz.js on GitHub" title="GitHub" rel="noopener">
+        <span class="icon icon-github" aria-hidden="true"></span>
+      </a>
+    </div>
+  </nav>
+
+  <dialog id="wizz-search" class={dialogClass} aria-label="Search documentation" on:click={handleDialogClick}>
+    <div class="panel">
+      <label class="field">
+        <span class="icon icon-search" aria-hidden="true"></span>
+        <input id="wizz-search-input" type="search" placeholder="Jump to a page, API, or concept…" autocomplete="off" spellcheck="false" aria-controls="wizz-search-results" on:input={handleQuery} on:keydown={handleSearchKeys} />
+        <kbd>Esc</kbd>
+      </label>
+      <ul id="wizz-search-results" class="results" role="listbox" on:mousemove={handleResultHover}>{#each results as result (result.id)}<li role="option" aria-selected={result.selected} data-index={result.position}><a class={result.resultClass} href={result.href}><span class="icon icon-hash" aria-hidden="true"></span><span class="r-title">{result.title}</span><span class="r-group">{result.group}</span><span class="icon icon-return r-enter" aria-hidden="true"></span></a></li>{/each}</ul>
+      <p class="empty">No matches. Try “persist”, “routing”, or “mcp”.</p>
+      <p class="foot"><span><kbd>↑</kbd> <kbd>↓</kbd> navigate</span><span><kbd>Enter</kbd> open</span><span class="count">{resultCount}</span></p>
+    </div>
+  </dialog>
+</header>
+
+<wizz:style>
+  .dock-wrap {
+    position: sticky;
+    inset-block-start: var(--nav-gap);
+    z-index: 50;
+    padding-inline: clamp(0.75rem, 2vw, 1.5rem);
+    margin-block-start: var(--nav-gap);
+    view-transition-name: topnav;
+  }
+
+  .skip {
+    position: absolute;
+    inset-inline-start: 1.5rem;
+    inset-block-start: 0.6rem;
+    z-index: 2;
+    padding: 0.5rem 1rem;
+    border-radius: var(--r-pill);
+    background-color: var(--ink);
+    color: var(--canvas);
+    font-weight: 650;
+    opacity: 0;
+    transform: translateY(-140%);
+    pointer-events: none;
+    transition: transform var(--dur) var(--ease-out), opacity var(--dur) var(--ease-out);
+  }
+
+  .skip:focus-visible {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+  }
+
+  .dock {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    max-inline-size: 89rem;
+    min-block-size: var(--nav-h);
+    margin-inline: auto;
+    padding-inline: 0.75rem;
+    border-radius: var(--r-pill);
+    animation: dock-in 640ms var(--ease-out) both;
+  }
+
+  @keyframes dock-in {
+    from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }
+
+  .brand {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding-inline: 0.35rem 0.5rem;
+    color: var(--ink);
+    text-decoration: none;
+    font-family: var(--font-display);
+    font-weight: 800;
+    font-size: 1.15rem;
+    letter-spacing: -0.02em;
+  }
+
+  .brand:hover {
+    color: var(--ink);
+  }
+
+  .mark {
+    display: grid;
+    place-items: center;
+    inline-size: 2.1rem;
+    block-size: 2.1rem;
+    border-radius: 11px;
+    background: conic-gradient(from 210deg, oklch(0.84 0.12 210), oklch(0.72 0.18 292), oklch(0.86 0.15 80), oklch(0.84 0.12 210));
+    color: oklch(0.15 0.03 270);
+    font-size: 1.05rem;
+    font-weight: 900;
+    box-shadow: inset 0 1px 0 oklch(1 0 0 / 0.6), 0 6px 18px -6px oklch(0.6 0.2 292 / 0.7);
+    transition: transform var(--dur) var(--ease-spring);
+  }
+
+  .brand:hover .mark {
+    transform: rotate(-8deg) scale(1.06);
+  }
+
+  .dot {
+    color: var(--accent);
+  }
+
+  .ver {
+    padding: 0.05rem 0.45rem;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--hairline);
+    color: var(--ink-3);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0;
+  }
+
+  .links {
+    display: flex;
+    gap: 0.25rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .link {
+    display: inline-flex;
+    align-items: center;
+    min-block-size: 2.4rem;
+    padding-inline: 0.95rem;
+    border-radius: var(--r-pill);
+    border: 1px solid transparent;
+    color: var(--ink-2);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out);
+  }
+
+  .link:hover {
+    color: var(--ink);
+    background-color: var(--hover-fill);
+  }
+
+  .link.is-active {
+    color: var(--ink);
+    background-color: var(--active-fill);
+    border-color: color-mix(in oklch, var(--accent) 40%, transparent);
+    box-shadow: inset 0 1px 0 var(--glint);
+  }
+
+  .actions {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    margin-inline-start: auto;
+  }
+
+  .search-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-inline-size: 15rem;
+    min-block-size: 2.5rem;
+    padding-inline: 0.9rem 0.45rem;
+    border-radius: var(--r-pill);
+    border: 1px solid var(--hairline);
+    background-color: var(--well);
+    color: var(--ink-3);
+    font-size: 0.88rem;
+    cursor: pointer;
+    box-shadow: inset 0 2px 6px light-dark(oklch(0.3 0.05 270 / 0.05), oklch(0 0 0 / 0.3));
+    transition: border-color var(--dur) var(--ease-out), color var(--dur) var(--ease-out);
+  }
+
+  .search-trigger:hover {
+    color: var(--ink-2);
+    border-color: color-mix(in oklch, var(--accent) 45%, transparent);
+  }
+
+  .search-text {
+    flex: 1;
+    text-align: start;
+  }
+
+  .icon-btn {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+    border-radius: 50%;
+    border: 1px solid transparent;
+    background: transparent;
+    color: var(--ink-2);
+    font-size: 1.05rem;
+    cursor: pointer;
+    transition: color var(--dur) var(--ease-out), background-color var(--dur) var(--ease-out), border-color var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+
+  .icon-btn:hover {
+    color: var(--ink);
+    background-color: var(--hover-fill);
+    border-color: var(--hairline);
+  }
+
+  .is-hidden {
+    display: none;
+  }
+
+  .icon-btn:active {
+    transform: scale(0.92);
+  }
+
+  .theme .icon {
+    animation: spin-in 520ms var(--ease-spring) both;
+  }
+
+  @keyframes spin-in {
+    from { transform: rotate(-90deg) scale(0.5); opacity: 0; }
+    to { transform: rotate(0) scale(1); opacity: 1; }
+  }
+
+  /* Spotlight search */
+  .spotlight {
+    inline-size: min(94vw, 38rem);
+    max-block-size: min(80dvh, 34rem);
+    margin-block-start: 12vh;
+    padding: 0;
+    border-radius: var(--r-lg);
+    color: var(--ink);
+    overflow: hidden;
+    opacity: 0;
+    transform: translateY(12px) scale(0.96);
+    transition:
+      opacity var(--dur) var(--ease-out),
+      transform var(--dur) var(--ease-out),
+      overlay var(--dur) allow-discrete,
+      display var(--dur) allow-discrete;
+  }
+
+  .spotlight[open] {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+
+  /* @starting-style bodies are not scope-rewritten: raise specificity so the
+     start state beats the scoped [open] rule above. */
+  @starting-style {
+    :root .spotlight.spotlight[open] {
+      opacity: 0;
+      transform: translateY(12px) scale(0.96);
+    }
+  }
+
+  .spotlight::backdrop {
+    background-color: oklch(0.08 0.02 268 / 0);
+    transition: background-color var(--dur) var(--ease-out), overlay var(--dur) allow-discrete, display var(--dur) allow-discrete;
+  }
+
+  .spotlight[open]::backdrop {
+    background-color: oklch(0.08 0.02 268 / 0.55);
+  }
+
+  @starting-style {
+    :root .spotlight.spotlight[open]::backdrop {
+      background-color: oklch(0.08 0.02 268 / 0);
+    }
+  }
+
+  .panel {
+    display: flex;
+    flex-direction: column;
+    max-block-size: inherit;
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 1rem 1.1rem;
+    border-block-end: 1px solid var(--hairline);
+    color: var(--ink-3);
+    font-size: 1.1rem;
+  }
+
+  .field input {
+    flex: 1;
+    min-inline-size: 0;
+    border: 0;
+    background: transparent;
+    color: var(--ink);
+    font: inherit;
+    font-size: 1.05rem;
+    font-weight: 500;
+    outline: none;
+  }
+
+  .field input::placeholder {
+    color: var(--ink-3);
+  }
+
+  .results {
+    flex: 1;
+    margin: 0;
+    padding: 0.5rem;
+    list-style: none;
+    overflow-y: auto;
+  }
+
+  .result {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.7rem 0.85rem;
+    border-radius: var(--r-sm);
+    color: var(--ink-2);
+    text-decoration: none;
+    transition: background-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  }
+
+  .result .icon {
+    color: var(--ink-3);
+  }
+
+  .r-title {
+    flex: 1;
+    font-weight: 600;
+  }
+
+  .r-group {
+    color: var(--ink-3);
+    font-size: 0.8rem;
+  }
+
+  .r-enter {
+    opacity: 0;
+    transform: translateX(-4px);
+    transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+
+  .result.is-active {
+    color: var(--ink);
+    background-color: var(--active-fill);
+    box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--accent) 35%, transparent);
+  }
+
+  .result.is-active .r-enter {
+    opacity: 1;
+    transform: translateX(0);
+  }
+
+  .empty {
+    display: none;
+    margin: 0;
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--ink-3);
+  }
+
+  .is-empty .empty {
+    display: block;
+  }
+
+  .foot {
+    display: flex;
+    gap: 1rem;
+    margin: 0;
+    padding: 0.6rem 1.1rem;
+    border-block-start: 1px solid var(--hairline);
+    color: var(--ink-3);
+    font-size: 0.78rem;
+  }
+
+  .count {
+    margin-inline-start: auto;
+  }
+
+  @media (max-width: 75rem) {
+    .search-trigger {
+      min-inline-size: 11rem;
+    }
+  }
+
+  @media (max-width: 62rem) {
+    .links {
+      display: none;
+    }
+  }
+
+  @media (max-width: 40rem) {
+    .search-trigger {
+      min-inline-size: 0;
+      inline-size: 2.5rem;
+      padding: 0;
+      justify-content: center;
+      border-radius: 50%;
+    }
+
+    .search-text,
+    .search-kbd,
+    .ver {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dock,
+    .theme .icon {
+      animation: none;
+    }
+  }
+</wizz:style>

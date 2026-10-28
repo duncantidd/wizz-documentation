@@ -1,0 +1,207 @@
+<script>
+  import TopNav from "../../components/TopNav.wizz";
+  import Sidebar from "../../components/Sidebar.wizz";
+  import Toc from "../../components/Toc.wizz";
+  import CodeBlock from "../../components/CodeBlock.wizz";
+  import Callout from "../../components/Callout.wizz";
+  import PageNav from "../../components/PageNav.wizz";
+
+  const toc = [
+    { id: "overview", label: "How it works" },
+    { id: "register", label: "Registering the server" },
+    { id: "tools", label: "The six tools" },
+    { id: "project-overview", label: "project_overview", depth: 3 },
+    { id: "component-diagnostics", label: "component_diagnostics", depth: 3 },
+    { id: "build-project", label: "build_project", depth: 3 },
+    { id: "language-contract", label: "language_contract", depth: 3 },
+    { id: "dev-workflow", label: "dev_workflow", depth: 3 },
+    { id: "create-or-update", label: "create_or_update_component", depth: 3 },
+    { id: "workflow", label: "A typical agent loop" },
+    { id: "security", label: "Security model" }
+  ];
+
+  const genericConfig = `{
+  "command": "wizz",
+  "args": ["mcp", "--root", "/path/to/project", "--allow-write"]
+}`;
+
+  const repoConfig = `{
+  "mcpServers": {
+    "wizz": {
+      "type": "stdio",
+      "command": "wsl.exe",
+      "args": [
+        "-d", "Ubuntu", "--",
+        "/home/you/.local/bin/wizz", "mcp",
+        "--root", "/mnt/c/Users/you/Develop/wizz-documentation",
+        "--allow-write"
+      ]
+    }
+  }
+}`;
+
+  const wireText = `→ {"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":"2025-06-18",...}}
+← {"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","capabilities":{"tools":{}},...}}
+→ {"jsonrpc":"2.0","method":"notifications/initialized"}
+→ {"jsonrpc":"2.0","id":2,"method":"tools/list"}
+→ {"jsonrpc":"2.0","id":3,"method":"tools/call","params":{"name":"build_project","arguments":{}}}`;
+
+  const overviewIn = `{ "inputDirectory": "src" }   // optional, default "src"`;
+  const overviewOut = `{
+  "root": "/mnt/c/Users/dunca/Develop/wizz-documentation",
+  "inputDirectory": "src",
+  "versions": { "compiler": "1.17.0", "syntax": "1.4.1", "output": "1.8.2" },
+  "documentShell": true,
+  "distPresent": true,
+  "adapters": ["node"],
+  "components": [
+    { "file": "App.wizz", "route": "/" },
+    { "file": "pages/docs/routing.wizz", "route": "/docs/routing" }
+  ],
+  "apiRoutes": [{ "routePath": "/api/greet", "filePath": "server/api/greet.js" }]
+}`;
+
+  const diagIn = `// exactly one target:
+{ "path": "src/components/Toc.wizz" }
+{ "source": "<main><p>{f()}</p></main>", "path": "src/Probe.wizz" }   // path labels inline source
+{ "all": true, "inputDirectory": "src" }`;
+  const diagOut = `{
+  "target": "src/Probe.wizz",
+  "ok": false,
+  "diagnostics": [{
+    "code": "WIZZ-P033",
+    "severity": "error",
+    "message": "Template Expression Error at src/Probe.wizz:1:13 - Unexpected token (",
+    "file": "src/Probe.wizz",
+    "line": 1,
+    "column": 13
+  }]
+}`;
+
+  const buildIn = `{ "inputDirectory": "src", "outputDirectory": "dist", "adapter": "node" }   // all optional`;
+  const buildOut = `{
+  "format": "wizz-build-diagnostics@1",
+  "ok": true,
+  "compiledCount": 24,
+  "failedCount": 0,
+  "diagnostics": [],
+  "files": [
+    { "file": "App.wizz", "serverRenderable": true },
+    { "file": "components/TopNav.wizz", "serverRenderable": true }
+  ]
+}`;
+
+  const writeIn = `{
+  "path": "src/components/Badge.wizz",
+  "source": "<script>\\n  export let label = \\"New\\";\\n<\/script>\\n\\n<span class=\\"badge\\">{label}</span>\\n",
+  "overwrite": false
+}`;
+</script>
+
+<wizz:head>
+  <title>MCP Server — Wizz.js Docs</title>
+  <meta name="description" content="wizz mcp: a zero-dependency Model Context Protocol server that gives AI agents project surveys, structured diagnostics, builds, the language contract, and compile-gated writes.">
+</wizz:head>
+
+<div class="site">
+  <TopNav section="mcp" showMenu={true} />
+  <div class="doc-shell">
+    <Sidebar current="/docs/mcp" />
+    <main id="main" class="doc-main glass">
+      <article class="prose">
+        <header>
+          <p class="eyebrow rise" style="--i: 0">Reference</p>
+          <h1 class="rise" style="--i: 1">MCP Server</h1>
+          <p class="lead rise" style="--i: 2"><code>wizz mcp</code> exposes the compiler to AI agents over the Model Context Protocol. Agents get the same structured diagnostics and builds a human gets from the CLI — and can only write components that compile.</p>
+        </header>
+
+        <h2 id="overview" class="reveal">How it works</h2>
+        <ul>
+          <li><strong>Transport</strong>: a hand-rolled, zero-dependency JSON-RPC 2.0 session over stdio, with newline-delimited messages per the 2025-06-18 MCP specification.</li>
+          <li><strong>Clean streams</strong>: stdout carries protocol messages only; logs go to stderr, so nothing a tool does can corrupt the session.</li>
+          <li><strong>In-process</strong>: compiles and builds run inside the server using the installed compiler — the same code paths as <code>wizz build</code>.</li>
+          <li><strong>Dual output</strong>: every tool returns human-readable text plus a <code>structuredContent</code> JSON payload for programmatic use.</li>
+        </ul>
+        <CodeBlock code={wireText} lang="text" title="stdio (abridged)" />
+
+        <h2 id="register" class="reveal">Registering the server</h2>
+        <p>Any MCP client that supports stdio servers can launch it:</p>
+        <CodeBlock code={genericConfig} lang="json" title="MCP client config" />
+        <p>This documentation site is developed with the server running inside WSL, registered in the project's <code>.mcp.json</code>:</p>
+        <CodeBlock code={repoConfig} lang="json" title=".mcp.json" />
+
+        <h2 id="tools" class="reveal">The six tools</h2>
+        <div class="table-scroll">
+          <table>
+            <thead><tr><th>Tool</th><th>Writes?</th><th>What it does</th></tr></thead>
+            <tbody>
+              <tr><td><a href="#project-overview"><code>project_overview</code></a></td><td>No</td><td>Components and routes, API routes, shell, build output, adapters, version triple</td></tr>
+              <tr><td><a href="#component-diagnostics"><code>component_diagnostics</code></a></td><td>No</td><td>Compile a file, inline source, or everything into structured records</td></tr>
+              <tr><td><a href="#build-project"><code>build_project</code></a></td><td>dist/ only</td><td>Run the build and return the JSON envelope</td></tr>
+              <tr><td><a href="#language-contract"><code>language_contract</code></a></td><td>No</td><td>The <code>.wizz</code> language contract and diagnostic catalog</td></tr>
+              <tr><td><a href="#dev-workflow"><code>dev_workflow</code></a></td><td>No</td><td>dev/build/deploy workflow and the secrets rule</td></tr>
+              <tr><td><a href="#create-or-update"><code>create_or_update_component</code></a></td><td>Yes, gated</td><td>Write a <code>.wizz</code> file only if it compiles</td></tr>
+            </tbody>
+          </table>
+        </div>
+
+        <h3 id="project-overview" class="reveal">project_overview</h3>
+        <p>Surveys the application. Start every session here.</p>
+        <div class="grid-2">
+          <CodeBlock code={overviewIn} lang="json" title="arguments" />
+          <CodeBlock code={overviewOut} lang="json" title="structured result (this site)" />
+        </div>
+
+        <h3 id="component-diagnostics" class="reveal">component_diagnostics</h3>
+        <p>Compiles without writing anything and returns <code>WIZZ-P</code>/<code>WIZZ-G</code> records. Targets exactly one of a project file, inline source, or every component.</p>
+        <div class="grid-2">
+          <CodeBlock code={diagIn} lang="js" title="arguments" />
+          <CodeBlock code={diagOut} lang="json" title="structured result" />
+        </div>
+
+        <h3 id="build-project" class="reveal">build_project</h3>
+        <p>Runs the <code>wizz build</code> equivalent in-process with a silent logger and returns the <code>wizz-build-diagnostics@1</code> envelope plus compiled/failed counts.</p>
+        <div class="grid-2">
+          <CodeBlock code={buildIn} lang="json" title="arguments" />
+          <CodeBlock code={buildOut} lang="json" title="structured result" />
+        </div>
+
+        <h3 id="language-contract" class="reveal">language_contract</h3>
+        <p>Takes no arguments. Returns the component language contract as text — file structure, the reactive script boundary, the expression subset, directives, imports and props, and the stable diagnostic codes — with the version triple as structured data. The text ships inline in the CLI, so it can never drift from the installed compiler.</p>
+
+        <h3 id="dev-workflow" class="reveal">dev_workflow</h3>
+        <p>Takes no arguments. Returns the real commands and defaults for <code>wizz init</code>, <code>dev</code>, <code>build</code>, the node adapter deploy recipe, API routes, the <code>.env.server</code> rule, and the update flow.</p>
+
+        <h3 id="create-or-update" class="reveal">create_or_update_component</h3>
+        <p>Creates or replaces a <code>.wizz</code> file — but only after the proposed source compiles. A failing source is refused with its diagnostic records echoed, and the target is left byte-identical.</p>
+        <CodeBlock code={writeIn} lang="json" title="arguments" />
+        <ul>
+          <li>Requires the server to be started with <code>--allow-write</code>; otherwise it refuses with guidance.</li>
+          <li>Targets must end in <code>.wizz</code> and stay inside the root, outside <code>dist/</code>, <code>node_modules/</code>, <code>.git/</code>, <code>release/</code>, and <code>vscode-extension/</code>.</li>
+          <li><code>overwrite</code> defaults to <code>false</code>; sources cap at 256 KiB.</li>
+        </ul>
+
+        <h2 id="workflow" class="reveal">A typical agent loop</h2>
+        <ol>
+          <li><strong>Orient</strong> with <code>project_overview</code>, then read <code>language_contract</code> before authoring.</li>
+          <li><strong>Draft</strong> a component and check it with <code>component_diagnostics</code> using inline <code>source</code>.</li>
+          <li><strong>Fix</strong> by switching on the diagnostic <code>code</code> and its <code>line</code>/<code>column</code> — never by parsing prose.</li>
+          <li><strong>Write</strong> with <code>create_or_update_component</code>; it re-runs the compile gate.</li>
+          <li><strong>Verify</strong> the whole project with <code>build_project</code> and check <code>serverRenderable</code> for each file.</li>
+        </ol>
+        <Callout kind="tip" title="The gate checks compilation, not runtime" body="A clean compile means the component is structurally valid. Still load the page: hydration warnings in the browser console catch server/client differences the compiler cannot see." />
+
+        <h2 id="security" class="reveal">Security model</h2>
+        <ul>
+          <li><strong>Fixed root</strong>: set by <code>--root</code> (default: the startup directory) and never changeable over the wire. Every path is checked lexically and through the real filesystem, so symlinks cannot escape.</li>
+          <li><strong>Opt-in writes</strong>: <code>--allow-write</code> is required, and every write is compile-gated.</li>
+          <li><strong>Race-hardened writes</strong>: the target opens with <code>O_NOFOLLOW</code> and its parent directory is re-verified against its realpath immediately before and after the open.</li>
+          <li><strong>Bounded work</strong>: every compile of agent- or project-supplied source caps at 256 KiB, and parser depth budgets (<code>WIZZ-P053</code>/<code>P054</code>) turn pathological nesting into diagnostics instead of stack overflows.</li>
+          <li><strong>Untrusted input</strong>: <code>__proto__</code> keys are stripped at parse time and message lines cap at 2 MiB.</li>
+        </ul>
+      </article>
+      <PageNav prevHref="/docs/cli" prevLabel="CLI" nextHref="/docs/examples" nextLabel="Live Examples" />
+    </main>
+    <Toc items={toc} />
+  </div>
+</div>

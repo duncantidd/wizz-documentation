@@ -1,0 +1,277 @@
+<script>
+  import TopNav from "../../components/TopNav.wizz";
+  import Sidebar from "../../components/Sidebar.wizz";
+  import Toc from "../../components/Toc.wizz";
+  import CodeBlock from "../../components/CodeBlock.wizz";
+  import Callout from "../../components/Callout.wizz";
+  import PageNav from "../../components/PageNav.wizz";
+  import Counter from "../../components/Counter.wizz";
+  import TodoDemo from "../../components/TodoDemo.wizz";
+
+  const toc = [
+    { id: "state", label: "Reactive state" },
+    { id: "batching", label: "Microtask batching" },
+    { id: "mutations", label: "Which mutations are tracked" },
+    { id: "events", label: "Event handling" },
+    { id: "lists", label: "Lists with {#each}" },
+    { id: "todo-demo", label: "Live: keyed todo list", depth: 3 },
+    { id: "conditionals", label: "Conditional rendering" },
+    { id: "persist", label: "persist(): cross-tab state" },
+    { id: "persist-demo", label: "Live: persisted counter", depth: 3 },
+    { id: "patterns", label: "Patterns" }
+  ];
+
+  const stateSource = `<script>
+  let count = 0;                  // reactive
+  let user = { name: "Ada" };     // reactive
+  const LIMIT = 10;               // constant: renders once
+
+  function increment() {
+    if (count < LIMIT) {
+      count += 1;                 // marks count, schedules one update
+    }
+  }
+
+  function rename(next) {
+    user = { ...user, name: next };   // reassign objects immutably
+  }
+<\/script>
+
+<main>
+  <p>{user.name} clicked {count} times</p>
+  <button on:click={increment}>+1</button>
+</main>`;
+
+  const batchSource = `function reset() {
+  count = 0;           // mark count
+  label = "Reset";     // mark label
+  history = [];        // mark history
+  // nothing has touched the DOM yet...
+}
+// ...one update runs on the next microtask with all three marks combined.
+
+async function afterReset() {
+  reset();
+  await Promise.resolve();   // let the microtask flush
+  // the DOM now reflects every change
+}`;
+
+  const mutationSource = `// Tracked: statement-level assignments and updates, also inside callbacks
+count = count + 1;
+count += 1;
+count++;
+user.name = "Grace";              // property chains mark the root (user)
+items = [...items, next];
+setTimeout(() => { status = "done"; }, 500);
+onMount(() => { ready = true; });
+
+// Not tracked: method calls, expression positions, unbraced bodies
+items.push(next);                 // no assignment: reassign the array instead
+log(count = 5);                   // assignment inside a call argument
+if (done) status = "ok";          // unbraced control-flow body: add braces`;
+
+  const eventSource = `<script>
+  let query = "";
+  let count = 0;
+
+  function handleInput(event) {
+    query = event.target.value;
+  }
+
+  function add(amount) {
+    count += amount;
+  }
+
+  function handleSubmit(event) {
+    event.preventDefault();
+  }
+<\/script>
+
+<form on:submit={handleSubmit}>
+  <input value={query} on:input={handleInput} />
+  <button type="button" on:click={(event) => add(5)}>+5</button>
+</form>`;
+
+  const listSource = `<script>
+  let todos = [
+    { id: 1, title: "Read the contract", rowClass: "item is-done" },
+    { id: 2, title: "Build a keyed list", rowClass: "item" }
+  ];
+
+  // {#each} bodies take no on: directives — delegate from the container.
+  function handleListClick(event) {
+    const row = event.target.closest("[data-id]");
+    if (!row) return;
+    const id = Number(row.dataset.id);
+    todos = todos.filter((todo) => todo.id !== id);
+  }
+<\/script>
+
+<div class="todos">
+  <ul on:click={handleListClick}>{#each todos as todo (todo.id)}<li class={todo.rowClass} data-id={todo.id}>{todo.title}</li>{/each}</ul>
+</div>`;
+
+  const keylessSource = `<script>
+  let tags = ["compiler", "ssr", "zero-deps"];
+<\/script>
+
+<ul class="tags">{#each tags as tag}<li>{tag}</li>{/each}</ul>`;
+
+  const ifSource = `<script>
+  export let section = "About";
+<\/script>
+
+<div class="panel">
+  {#if section === "About"}
+    <p>The counter is available.</p>
+  {:else}
+    <p>Unknown section.</p>
+  {/if}
+</div>`;
+
+  const toggleSource = `<script>
+  let open = false;
+  let panelClass = "panel";
+
+  function toggle() {
+    open = !open;
+    panelClass = open ? "panel is-open" : "panel";
+  }
+<\/script>
+
+<section class="disclosure">
+  <button on:click={toggle} aria-expanded={open}>Details</button>
+  <div class={panelClass}>Shown and hidden with CSS, updated reactively.</div>
+</section>
+
+<wizz:style>
+  .panel { display: none; }
+  .panel.is-open { display: block; }
+</wizz:style>`;
+
+  const persistSource = `<script>
+  let theme = persist("theme", "light");
+
+  function toggle() {
+    theme = theme === "light" ? "dark" : "light";
+  }
+<\/script>
+
+<main>
+  <button on:click={toggle}>Theme: {theme}</button>
+</main>`;
+
+  const derivedSource = `<script>
+  let items = [];
+  let total = 0;
+  let summary = "Cart is empty";
+
+  // One function owns every derived value; call it after each change.
+  function recompute() {
+    total = items.reduce((sum, item) => sum + item.price, 0);
+    summary = items.length === 0 ? "Cart is empty" : items.length + " items";
+  }
+
+  function add(item) {
+    items = [...items, item];
+    recompute();
+  }
+
+  onMount(recompute);   // also after hydration restores persisted state
+<\/script>`;
+</script>
+
+<wizz:head>
+  <title>State & Reactivity — Wizz.js Docs</title>
+  <meta name="description" content="Reactive let state, microtask batching, events, keyed lists, conditionals, and persist() cross-tab state in Wizz.js.">
+</wizz:head>
+
+<div class="site">
+  <TopNav section="docs" showMenu={true} />
+  <div class="doc-shell">
+    <Sidebar current="/docs/reactivity" />
+    <main id="main" class="doc-main glass">
+      <article class="prose">
+        <header>
+          <p class="eyebrow rise" style="--i: 0">Core Concepts</p>
+          <h1 class="rise" style="--i: 1">State & Reactivity</h1>
+          <p class="lead rise" style="--i: 2">Reactivity in Wizz is plain JavaScript: declare state with <code>let</code>, change it with assignment. The compiler finds the assignments, the analyzer knows which nodes read each variable, and a microtask scheduler applies the changes in one pass.</p>
+        </header>
+
+        <h2 id="state" class="reveal">Reactive state</h2>
+        <p>Every top-level <code>let</code> in a component script is reactive. Reassigning it marks the variable as changed and schedules an update. <code>const</code> bindings render once.</p>
+        <CodeBlock code={stateSource} lang="wizz" title="Counter.wizz" />
+
+        <h2 id="batching" class="reveal">Microtask batching</h2>
+        <p>Updates are <strong>asynchronous and batched</strong>. Each assignment only marks its variable; one DOM update runs on the next microtask with every mark combined. A handler that changes several variables triggers a single update, and the DOM settles before the browser paints.</p>
+        <CodeBlock code={batchSource} lang="js" title="batching" />
+        <Callout kind="note" title="Testing tip" body="Read the DOM after an await (for example await Promise.resolve()), not synchronously after dispatching an event — the update has not run yet." />
+
+        <h2 id="mutations" class="reveal">Which mutations are tracked</h2>
+        <p>A syntax-aware rewriter inserts the scheduler call after <strong>statement-level</strong> mutations, following them into function and arrow callback bodies. Mutations in expression positions are deliberately left alone.</p>
+        <CodeBlock code={mutationSource} lang="js" title="tracked vs. untracked" />
+
+        <h2 id="events" class="reveal">Event handling</h2>
+        <p><code>{"on:<event>"}</code> binds any native DOM event name — <code>click</code>, <code>input</code>, <code>submit</code>, <code>keydown</code>, <code>pointermove</code> — with <code>addEventListener</code>. The value is either a component function or an expression that receives the event.</p>
+        <CodeBlock code={eventSource} lang="wizz" title="Search.wizz" />
+        <ul>
+          <li>Event directives work on <strong>native elements only</strong> — pass callbacks to components as props.</li>
+          <li>Handlers are client-only; server rendering skips them, and hydration attaches them after the adoption walk passes.</li>
+          <li><code>destroy()</code> removes every listener Wizz attached.</li>
+        </ul>
+        <Callout kind="tip" title="Prefer named handlers" body="Inline arrows compile, but named functions keep templates scannable, are easy to unit-test, and make the mutation the rewriter tracks obvious." />
+
+        <h2 id="lists" class="reveal">Lists with {"{#each}"}</h2>
+        <p>Give each row a key when node identity should follow the item — for example when rows reorder. On reassignment Wizz retains matching keys, moves them into the new order, updates their text and attributes, creates new keys, and removes missing ones. Duplicate keys throw.</p>
+        <CodeBlock code={listSource} lang="wizz" title="Todos.wizz" />
+        <p>For primitives, or when position is identity enough, omit the key. A keyless block updates rows in place by index, appends as it grows, and trims as it shrinks.</p>
+        <CodeBlock code={keylessSource} lang="wizz" title="Tags.wizz" />
+        <div class="grid-2">
+          <div class="mini-card"><h3>Every {"{#each}"} must…</h3><p>sit inside a native element, have exactly one native root element per row, and iterate a reactive <code>let</code> to update (a <code>const</code> renders once).</p></div>
+          <div class="mini-card"><h3>Row bodies may not contain…</h3><p>imported components, <code>on:</code> directives, or nested {"{#if}"}/{"{#each}"} blocks. Precompute row classes and labels, and delegate events.</p></div>
+        </div>
+
+        <h3 id="todo-demo" class="reveal">Live: keyed todo list</h3>
+        <p>A keyed list with one delegated click listener, a submit handler, CSS-driven filtering, and <code>persist()</code> — add a few items and reload.</p>
+        <div class="sandbox">
+          <p class="sandbox-label">Live · TodoDemo.wizz</p>
+          <TodoDemo />
+        </div>
+
+        <h2 id="conditionals" class="reveal">Conditional rendering</h2>
+        <p><code>{"{#if}"}</code> chooses a branch with the expression grammar — identifiers, member access, literals, and strict equality — plus an optional <code>{"{:else}"}</code>.</p>
+        <CodeBlock code={ifSource} lang="wizz" title="Panel.wizz" />
+        <Callout kind="warn" title="Branches are chosen at mount" body="Changing a reactive condition does not yet swap an already-rendered branch. Use {#if} for structure decided by props or initial state, and drive interactive show/hide with a bound class or attribute." />
+        <CodeBlock code={toggleSource} lang="wizz" title="Disclosure.wizz" />
+
+        <h2 id="persist" class="reveal">persist(): cross-tab state</h2>
+        <p>Initialize a top-level <code>let</code> with <code>persist(key, default)</code> and it survives reloads and stays in sync across tabs, with no other change to how you use it.</p>
+        <CodeBlock code={persistSource} lang="wizz" title="ThemeToggle.wizz" />
+        <ul>
+          <li><strong>Mount</strong>: the stored value (JSON) wins over the default; unreadable values fall back to the default.</li>
+          <li><strong>Write</strong>: every statement mutation writes back. Quota and private-mode failures leave in-memory state intact.</li>
+          <li><strong>Sync</strong>: mounts subscribe to a shared per-page bus; tabs converge over <code>BroadcastChannel</code>, falling back to <code>storage</code> events. A tab's own writes never echo back.</li>
+          <li><strong>Server</strong>: there is no storage, so SSR renders the default and hydration restores the stored value — derive dependent values in <code>onMount</code>.</li>
+          <li><strong>Keys</strong> are string literals used verbatim: two components persisting the same key share state on purpose.</li>
+        </ul>
+        <Callout kind="note" title="Compile-time checks" body="persist() must initialize a top-level let with exactly two arguments and a string-literal key. Using it on a prop, a const, nested in a function, or inside another persist() fails with WIZZ-P044 to WIZZ-P052." />
+
+        <h3 id="persist-demo" class="reveal">Live: persisted counter</h3>
+        <p>This is the same <code>wizz_docs_counter</code> key as the landing page hero. Change it here, then open the home page in another tab.</p>
+        <div class="sandbox">
+          <p class="sandbox-label">Live · Counter.wizz</p>
+          <Counter label="Shared with the hero" />
+        </div>
+
+        <h2 id="patterns" class="reveal">Patterns</h2>
+        <h3>Derived values</h3>
+        <p>Wizz has no computed-value syntax: keep a single function that recomputes derived state, call it after the mutations that matter, and once on mount.</p>
+        <CodeBlock code={derivedSource} lang="wizz" title="Cart.wizz" />
+        <h3>Cleanup</h3>
+        <p>Anything you start in <code>onMount</code> — intervals, observers, global listeners, <code>AbortController</code>s — stop in <code>onDestroy</code>. Do not change state there; the component is being torn down.</p>
+      </article>
+      <PageNav prevHref="/docs/components" prevLabel="Components & Templating" nextHref="/docs/routing" nextLabel="Routing & Navigation" />
+    </main>
+    <Toc items={toc} />
+  </div>
+</div>

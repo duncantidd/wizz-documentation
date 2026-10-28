@@ -1,0 +1,174 @@
+<script>
+  // items: [{ id, label, depth? }] — the page's section headings in order.
+  export let items = [];
+
+  let activeId = "";
+  let entries = decorate("");
+  let pillStyle = "opacity: 0";
+  let frame = 0;
+
+  function decorate(currentId) {
+    return items.map((item) => ({
+      id: item.id,
+      href: "#" + item.id,
+      label: item.label,
+      linkClass: ["toc-link", item.depth === 3 ? "is-sub" : "", item.id === currentId ? "is-active" : ""].filter(Boolean).join(" "),
+      ariaCurrent: item.id === currentId ? "location" : "false"
+    }));
+  }
+
+  function setActive(id) {
+    if (id === activeId) return;
+    activeId = id;
+    entries = decorate(id);
+    const index = items.findIndex((item) => item.id === id);
+    // Rows share one fixed height, so the pill's own height is the stride.
+    pillStyle = index < 0 ? "opacity: 0" : "transform: translateY(" + index * 100 + "%)";
+  }
+
+  function measure() {
+    frame = 0;
+    const line = Math.min(window.innerHeight * 0.3, 180);
+    // The last heading above the reading line wins; at the very bottom the
+    // final section wins even if it is short. (Locals are const: the state
+    // scanner would hoist a nested `let` into component state.)
+    const passed = items.filter((item) => {
+      const heading = document.getElementById(item.id);
+      return heading && heading.getBoundingClientRect().top - line <= 0;
+    });
+    const atEnd = window.innerHeight + window.scrollY >= document.documentElement.scrollHeight - 4;
+    const fallback = items.length > 0 ? items[0].id : "";
+    const pick = atEnd ? items[items.length - 1] : passed[passed.length - 1];
+    setActive(pick ? pick.id : fallback);
+  }
+
+  function schedule() {
+    if (frame === 0) frame = requestAnimationFrame(measure);
+  }
+
+  onMount(() => {
+    measure();
+    window.addEventListener("scroll", schedule, { passive: true });
+    window.addEventListener("resize", schedule, { passive: true });
+  });
+
+  onDestroy(() => {
+    cancelAnimationFrame(frame);
+    window.removeEventListener("scroll", schedule);
+    window.removeEventListener("resize", schedule);
+  });
+</script>
+
+<aside class="toc glass" aria-label="On this page">
+  <p class="heading">On this page</p>
+  <div class="track">
+    <span class="pill" style={pillStyle} aria-hidden="true"></span>
+    <ul>{#each entries as entry (entry.id)}<li><a class={entry.linkClass} href={entry.href} aria-current={entry.ariaCurrent}>{entry.label}</a></li>{/each}</ul>
+  </div>
+  <a class="top" href="#main">Back to top ↑</a>
+</aside>
+
+<wizz:style>
+  .toc {
+    position: sticky;
+    inset-block-start: var(--chrome-top);
+    max-block-size: calc(100dvh - var(--chrome-top) - 1rem);
+    padding: 1rem 0.75rem 0.85rem;
+    border-radius: var(--r-lg);
+    overflow-y: auto;
+    scrollbar-width: thin;
+    view-transition-name: toc;
+    animation: toc-in 700ms var(--ease-out) 240ms both;
+  }
+
+  @keyframes toc-in {
+    from { opacity: 0; transform: translateX(12px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  .heading {
+    margin: 0 0 0.6rem 0.6rem;
+    color: var(--ink-3);
+    font-size: 0.72rem;
+    font-weight: 750;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+  }
+
+  .track {
+    position: relative;
+  }
+
+  .pill {
+    position: absolute;
+    inset-inline: 0;
+    inset-block-start: 0;
+    block-size: 2.1rem;
+    border-radius: var(--r-sm);
+    background: linear-gradient(90deg, color-mix(in oklch, var(--accent) 20%, transparent), transparent);
+    box-shadow: inset 2px 0 0 var(--accent);
+    transition: transform 420ms var(--ease-spring), opacity var(--dur) var(--ease-out);
+    pointer-events: none;
+  }
+
+  ul {
+    position: relative;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .toc-link {
+    display: block;
+    block-size: 2.1rem;
+    padding-inline: 0.75rem 0.5rem;
+    overflow: hidden;
+    color: var(--ink-3);
+    font-size: 0.84rem;
+    font-weight: 550;
+    line-height: 2.1rem;
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    transition: color var(--dur) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+  }
+
+  .toc-link:hover {
+    color: var(--ink);
+    transform: translateX(2px);
+  }
+
+  .toc-link.is-sub {
+    padding-inline-start: 1.5rem;
+    font-size: 0.8rem;
+  }
+
+  .toc-link.is-active {
+    color: var(--ink);
+  }
+
+  .top {
+    display: inline-block;
+    margin: 0.75rem 0 0 0.75rem;
+    color: var(--ink-3);
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .top:hover {
+    color: var(--accent);
+  }
+
+  @media (max-width: 75rem) {
+    .toc {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .toc {
+      animation: none;
+    }
+  }
+</wizz:style>

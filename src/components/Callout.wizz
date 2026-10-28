@@ -1,0 +1,69 @@
+<script>
+  // kind: "note" | "tip" | "warn"
+  export let kind = "note";
+  export let title = "Note";
+  export let body = "";
+
+  // Mixed static/dynamic attribute values are not interpolated, so the
+  // full class string is precomputed.
+  const rootClass = "callout " + kind;
+</script>
+
+<aside class={rootClass} role="note">
+  <p class="title"><span class="glyph" aria-hidden="true"></span>{title}</p>
+  <p class="body">{body}</p>
+</aside>
+
+<wizz:style>
+  .callout {
+    --tone: var(--cyan);
+    position: relative;
+    margin: 0;
+    padding: 1rem 1.15rem 1rem 1.35rem;
+    border-radius: var(--r-md);
+    border: 1px solid color-mix(in oklch, var(--tone) 32%, transparent);
+    background:
+      linear-gradient(110deg, color-mix(in oklch, var(--tone) 13%, transparent), transparent 70%),
+      var(--well);
+    box-shadow: inset 0 1px 0 var(--glint);
+    overflow: hidden;
+  }
+
+  .callout::before {
+    content: "";
+    position: absolute;
+    inset-block: 0.75rem;
+    inset-inline-start: 0;
+    inline-size: 3px;
+    border-radius: 0 3px 3px 0;
+    background-color: var(--tone);
+    box-shadow: 0 0 14px var(--tone);
+  }
+
+  .tip { --tone: var(--mint); }
+  .warn { --tone: var(--amber); }
+
+  .title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin: 0 0 0.3rem;
+    color: var(--ink);
+    font-size: 0.92rem;
+    font-weight: 700;
+  }
+
+  .glyph {
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border-radius: 50%;
+    background-color: var(--tone);
+  }
+
+  .body {
+    margin: 0;
+    color: var(--ink-2);
+    font-size: 0.96rem;
+    line-height: 1.65;
+  }
+</wizz:style>
