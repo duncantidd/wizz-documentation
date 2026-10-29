@@ -1,0 +1,37 @@
+# Wizz.js
+
+> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.17.0, syntax 1.4.1, output 1.8.2.
+
+Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail to compile. Before writing a `.wizz` file, read [the full reference](/llms-full.txt). The rules that trip agents up most:
+
+- A template has exactly one native root element.
+- `{...}` accepts only identifiers, member access (`a.b.c`), string/number literals, and strict equality (`a === "b"`). No function calls, ternaries, arithmetic, or `&&`/`||`: compute values in `<script>` and reference them by name.
+- Dynamic attributes must be unquoted: `class={cardClass}`. A quoted value such as `class="card {state}"` renders the braces literally.
+- Components are self-closing tags inside a native element: no children, no slots, and no `on:` directives on component tags (pass callback props).
+- `{#each}` sits inside a native element, has one native root element per row, and its body may not contain components, `on:` directives, or nested `{#if}`/`{#each}`. Delegate events from the parent.
+- Top-level `let` is reactive; update by reassignment (`items = [...items, x]`), not mutation (`items.push(x)`).
+- `{#if}` picks its branch once at mount. Toggle interactive visibility with a bound class.
+- `onMount`, `onDestroy`, and `persist` are compiler globals: call them without importing. Read `window`/`document` only inside `onMount`.
+
+## Getting started
+
+- [Installation & Setup](/docs/getting-started): Install the CLI, scaffold a project, project layout, first component, dev server, production build, editor setup.
+
+## Core concepts
+
+- [Components & Templating](/docs/components): Component anatomy, the template expression grammar, dynamic attributes, props, composition, scoped styles, `<wizz:head>`, lifecycle, and the rules the compiler enforces.
+- [State & Reactivity](/docs/reactivity): Reactive `let`, microtask batching, which mutations are tracked, events, keyed and keyless `{#each}`, `{#if}`, `persist()`, derived-value and cleanup patterns.
+- [Routing & Navigation](/docs/routing): File-system routes, the route manifest, the client router, links, view transitions, query parameters, guards and redirects.
+- [Server APIs & SSR](/docs/server): `src/server/api/*.js` handlers, the request context, return values, `.env.server` secrets, server rendering eligibility, deploying with the node adapter.
+
+## Reference
+
+- [API Reference](/docs/api): Script globals, template directives, generated module exports, compiler API, router, handler contract, and the full `WIZZ-P`/`WIZZ-G` diagnostic code catalog.
+- [CLI](/docs/cli): `wizz init`, `dev`, `build` (`--json`, `--adapter node`), `mcp`, `update`, `install-vscode-extension`, `--version`.
+- [MCP Server](/docs/mcp): The six tools `wizz mcp` exposes to AI agents, the recommended agent loop, and the security model.
+
+## Optional
+
+- [Architecture & Philosophy](/docs/architecture): Why zero dependencies and no Virtual DOM, the compiler pipeline, the update model, SSR and hydration internals, CSS delivery, versioning, security boundaries.
+- [Live Examples](/docs/examples): Persisted counter, keyed todo list, parent-to-child props, lifecycle clock, server API call.
+- [Source code](https://github.com/duncantidd/wizz.js): The Wizz.js repository, releases, and installer.

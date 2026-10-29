@@ -22,6 +22,8 @@ Before writing, refactoring, or reviewing frontend styling or architecture, you 
   wizz-documentation/
   ├── index.html                   # Document shell (<div id="app"></div> + /runtime/main.js)
   ├── App.css                      # Global design tokens (:root), reset, and shell layout
+  ├── llms.txt                     # LLM-facing index of the docs (llmstxt.org format)
+  ├── llms-full.txt                # Self-contained LLM reference: full .wizz contract, rules, codes, example
   ├── .mcp.json                    # Wizz MCP server config (compiler & project tools via WSL)
   ├── .skills/                     # Authoritative skill guides (Wizz, CSS, JS, Design Systems, Testing)
   ├── src/
@@ -101,3 +103,11 @@ Consult `.skills/wizz/README.md` and its 4 sub-guides before writing `.wizz` fil
   - Define global custom properties (`:root`), resets, color palettes (OKLCH / `light-dark()`), and ambient background substrates in `App.css`.
   - Write component-scoped CSS inside `<wizz:style>` (automatically scoped via `[data-wizz-s]` and isolated `@keyframes`).
   - Use flow-relative logical properties (`inline-size`, `block-size`, `padding-inline`, `padding-block`, `margin-inline`, `inset`) and composite-only GPU animations (`transform`, `opacity`, `clip-path`, `filter`) with `@media (prefers-reduced-motion: reduce)` and `@media (prefers-reduced-transparency: reduce)` safeguards.
+
+### 4. Keep `llms.txt` and `llms-full.txt` in Sync (Mandatory)
+`llms.txt` and `llms-full.txt` at the project root are the agent-facing copies of this documentation. AI agents read them instead of the rendered pages, so a stale entry teaches agents the wrong framework.
+- **Every change to the docs content must be reflected in both files in the same change.** This includes adding, removing, renaming, or moving a page in `src/pages/docs/`; changing any documented behavior, rule, API, CLI flag, diagnostic code, or code example; and bumping the documented Wizz version triple.
+- **`llms.txt`**: Keep one link per docs page with an accurate one-line summary, grouped as Getting started / Core concepts / Reference / Optional. Update the "rules that trip agents up" list if a compiler rule changes.
+- **`llms-full.txt`**: Update the matching numbered section, the diagnostic code tables (section 18), and the "Habits from other frameworks" table (section 19) when relevant. Keep it self-contained: no "see the website" for anything an agent needs to write correct code.
+- **Verify the complete example (section 20) still compiles** after any compiler-rule or version change, by passing its source to the Wizz MCP `component_diagnostics` tool or building it in a scratch project.
+- Pure styling or layout changes to the site (CSS, animations, navigation chrome) do not need an update.

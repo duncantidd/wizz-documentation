@@ -1,0 +1,655 @@
+# Wizz.js — full reference for language models
+
+> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
+
+Versions covered: compiler 1.17.0, syntax 1.4.1, output 1.8.2 (`wizz --version`).
+Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
+
+Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
+
+---
+
+## 1. Install and project layout
+
+Requirements: Node.js 18+, curl and tar (installer only), an evergreen browser.
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/install-cli.sh | bash
+wizz init my-app
+cd my-app && wizz dev          # http://127.0.0.1:3000
+```
+
+The CLI installs to `~/.local/share/wizz` with a launcher in `~/.local/bin`. Nothing is added to the project's `node_modules`.
+
+```text
+my-app/
+├── index.html                 # Document shell: <div id="app"></div> + /runtime/main.js
+├── App.css                    # Global tokens, reset, layout
+└── src/
+    ├── App.wizz               # Landing page → /
+    ├── pages/Home.wizz        # Routed page → /home
+    ├── components/Card.wizz   # Imported component
+    └── server/api/health.js   # Server handler → /api/health
+```
+
+You edit `index.html`, `App.css`, `src/**/*.wizz`, and `src/server/api/*.js`. `dist/` is generated and disposable: never edit it.
+
+---
+
+## 2. Anatomy of a component
+
+A `.wizz` file is one component: a template with exactly one native root element, plus at most one each of `<script>`, `<wizz:head>`, and `<wizz:style>`.
+
+```html
+<script>
+  import Avatar from "./Avatar.wizz";
+
+  export let user;               // prop (read-only in this component)
+  let expanded = false;          // reactive state
+
+  function toggle() {
+    expanded = !expanded;
+  }
+</script>
+
+<wizz:head>
+  <title>{user.name} - Profile</title>
+</wizz:head>
+
+<article class="profile">
+  <Avatar src={user.avatar} />
+  <h2>{user.name}</h2>
+  <button on:click={toggle} aria-expanded={expanded}>Details</button>
+</article>
+
+<wizz:style>
+  .profile { display: grid; gap: 1rem; }
+  h2 { margin: 0; }              /* scoped: other components' h2s are untouched */
+</wizz:style>
+```
+
+- Template: exactly one native root element. Wrap siblings in one element.
+- `<script>`: top-level `let` is reactive state, `export let` declares a prop, named functions are handlers, `onMount`/`onDestroy` register hooks with no import.
+- `<wizz:head>`: only `<title>`, `<meta>`, and `<link>`.
+- `<wizz:style>`: raw CSS scoped to this component. A plain `<style>` element is rejected (WIZZ-P020).
+- Keep files LF-only (hydration compares template whitespace exactly).
+
+---
+
+## 3. Template expressions
+
+`{...}` accepts ONLY:
+
+1. Identifiers: `{title}`
+2. Member access: `{user.profile.name}`
+3. String and number literals: `{"v1.0"}`, `{42}`
+4. Strict equality: `{role === "admin"}` (mainly in `{#if}`)
+
+Everything else is unsupported: function calls, ternaries, arithmetic, string concatenation, `&&`, `||`, `!`, array methods, template literals. Calls and ternaries fail with WIZZ-P033; treat anything outside the subset as unsupported even if it happens to parse.
+
+```html
+<script>
+  let user = { name: "Ada", role: "admin" };
+  let items = ["a", "b", "c"];
+
+  // Derive everything in the script, then reference it by name.
+  let itemCount = items.length;
+  let greeting = "Welcome back, " + user.name;
+</script>
+
+<section>
+  <h2>{greeting}</h2>
+  <p>{user.name}</p>
+  {#if user.role === "admin"}
+    <p>{itemCount} items</p>
+  {/if}
+</section>
+```
+
+Text output escapes `&`, `<`, `>`; attribute values also escape `"`. HTML entities are not decoded in templates: to show a literal `<script>` in prose, write `{"<script>"}`.
+
+Avoid empty-string text interpolations in server-rendered components: an empty text node does not survive HTML parsing, so hydration falls back to a client render. Initialize display strings to something visible.
+
+---
+
+## 4. Dynamic attributes
+
+Bind an attribute by making its ENTIRE, UNQUOTED value an expression.
+
+```html
+<script>
+  let active = true;
+  let name = "Ada";
+  let cardClass = active ? "card is-active" : "card";   // compose in the script
+  let profileHref = "/users/" + name.toLowerCase();
+</script>
+
+<div class={cardClass}>
+  <a href={profileHref}>Profile</a>
+  <input value={name} checked={active} disabled={false} aria-label={name} />
+</div>
+```
+
+- WRONG: `class="card {state}"` or `href="{url}"`. Quoted values are static: the braces render literally.
+- `value`, `checked`, and `disabled` update as DOM properties; every other name updates as an HTML attribute.
+
+---
+
+## 5. Props
+
+The child declares props with `export let`; the parent passes them as attributes on the component tag.
+
+```html
+<!-- Greeting.wizz -->
+<script>
+  export let name = "Guest";   // default when the parent omits it
+  export let count;            // undefined unless passed
+</script>
+
+<p>Hello {name}, clicked {count} times</p>
+```
+
+```html
+<!-- App.wizz -->
+<script>
+  import Greeting from "./components/Greeting.wizz";
+  let clicks = 0;
+
+  function click() {
+    clicks += 1;
+  }
+</script>
+
+<main>
+  <Greeting name="Ada" count={clicks} emphasized />
+  <button on:click={click}>Click</button>
+</main>
+```
+
+- Static attributes pass strings, bare attributes pass `true`, `{expressions}` pass values that update when their dependencies change.
+- New values arrive through `setProps()`; the child re-renders in place and keeps its DOM and internal state.
+- Props are read-only in the child: assigning one is WIZZ-G015. Copy into a local `let` if you need to change it.
+- One prop per `export let` (WIZZ-P038). Prop names may not start with `__wizz`.
+- Omitted prop or explicit `undefined` → default. Undeclared attributes are ignored.
+
+---
+
+## 6. Composition and imports
+
+```html
+<script>
+  import SearchBar from "./SearchBar.wizz";
+  let query = "";
+
+  // Children talk to parents through callback props.
+  function handleSearch(next) {
+    query = next;
+  }
+</script>
+
+<div class="toolbar">
+  <SearchBar onSearch={handleSearch} placeholder="Filter…" />
+</div>
+```
+
+- Default imports of a relative `.wizz` path only, each on its own line (WIZZ-G016).
+- Render components as self-closing tags inside a native element (WIZZ-G010).
+- No children or slots: `<Card><p>x</p></Card>` is WIZZ-G008. Pass content through props.
+- No `on:` directives on component tags (WIZZ-G011). Pass a callback prop.
+- No components inside `{#each}` (WIZZ-G004).
+- Destroying a parent destroys every imported child.
+
+---
+
+## 7. Reactivity
+
+Every top-level `let` in `<script>` is reactive. `const` renders once.
+
+```html
+<script>
+  let count = 0;
+  let user = { name: "Ada" };
+  const LIMIT = 10;
+
+  function increment() {
+    if (count < LIMIT) {
+      count += 1;
+    }
+  }
+
+  function rename(next) {
+    user = { ...user, name: next };
+  }
+</script>
+
+<main>
+  <p>{user.name} clicked {count} times</p>
+  <button on:click={increment}>+1</button>
+</main>
+```
+
+Updates are batched: each assignment marks its variable, and one DOM update runs on the next microtask with every mark combined.
+
+Which mutations are tracked:
+
+```js
+// Tracked: statement-level assignments and updates, also inside callbacks
+count = count + 1;
+count += 1;
+count++;
+user.name = "Grace";              // property chains mark the root (user)
+items = [...items, next];
+setTimeout(() => { status = "done"; }, 500);
+onMount(() => { ready = true; });
+
+// NOT tracked
+items.push(next);                 // method call: reassign the array instead
+log(count = 5);                   // assignment inside an expression
+if (done) status = "ok";          // unbraced body: add braces
+```
+
+- Use `const` for locals inside helper functions: the state scanner treats `let` declarations as component state.
+- Reactive names may not be `__proto__` or start with `__wizz` (WIZZ-G017).
+
+Derived values: Wizz has no computed syntax. Keep one function that recomputes derived state, call it after relevant changes and once in `onMount`.
+
+```js
+let items = [];
+let total = 0;
+let summary = "Cart is empty";
+
+function recompute() {
+  total = items.reduce((sum, item) => sum + item.price, 0);
+  summary = items.length === 0 ? "Cart is empty" : items.length + " items";
+}
+
+function add(item) {
+  items = [...items, item];
+  recompute();
+}
+
+onMount(recompute);
+```
+
+---
+
+## 8. Events
+
+`on:<event>` binds any native DOM event with `addEventListener`. The value is a component function, or an expression whose value is passed to `addEventListener`.
+
+```html
+<form on:submit={handleSubmit}>
+  <input value={query} on:input={handleInput} />
+  <button type="button" on:click={(event) => add(5)}>+5</button>
+</form>
+```
+
+- Native elements only: never on component tags (WIZZ-G011) or inside `{#each}` bodies (WIZZ-G006).
+- Handlers are client-only. Server rendering skips them; hydration attaches them.
+- Wizz removes every listener it attached on `destroy()`. Listeners you add to `window`/`document` yourself must be removed in `onDestroy`.
+
+---
+
+## 9. Lists: `{#each}`
+
+```html
+<script>
+  let todos = [
+    { id: 1, title: "Read the contract", rowClass: "item is-done" },
+    { id: 2, title: "Build a keyed list", rowClass: "item" }
+  ];
+
+  // Rows can't have on: directives, so delegate from the container.
+  function handleListClick(event) {
+    const row = event.target.closest("[data-id]");
+    if (!row) return;
+    const id = Number(row.dataset.id);
+    todos = todos.filter((todo) => todo.id !== id);
+  }
+</script>
+
+<div class="todos">
+  <ul on:click={handleListClick}>{#each todos as todo (todo.id)}<li class={todo.rowClass} data-id={todo.id}>{todo.title}</li>{/each}</ul>
+</div>
+```
+
+Every `{#each}` must:
+
+1. Sit directly inside a native element (WIZZ-G002).
+2. Have exactly one native root element per row (WIZZ-G003).
+3. Iterate a top-level `let` to update on reassignment (a `const` renders once).
+
+Row bodies may NOT contain:
+
+- Imported components (WIZZ-G004)
+- `on:` directives (WIZZ-G006): use event delegation as above
+- Nested `{#if}` or `{#each}` (WIZZ-G005): precompute per-row classes and labels in the script
+
+Keys: `(item.id)` retains and moves nodes by key; duplicate keys throw. Omit the key for primitives or when position is identity enough (rows update by index).
+
+---
+
+## 10. Conditionals: `{#if}`
+
+```html
+{#if status === "ready"}
+  <p>Ready.</p>
+{:else}
+  <p>Loading…</p>
+{/if}
+```
+
+The condition uses the same expression grammar (identifier, member access, literal, strict equality). The branch is chosen ONCE AT MOUNT: changing the condition later does not swap an already-rendered branch. For interactive show/hide, bind a class:
+
+```html
+<script>
+  let open = false;
+  let panelClass = "panel";
+
+  function toggle() {
+    open = !open;
+    panelClass = open ? "panel is-open" : "panel";
+  }
+</script>
+
+<section class="disclosure">
+  <button on:click={toggle} aria-expanded={open}>Details</button>
+  <div class={panelClass}>Shown and hidden with CSS.</div>
+</section>
+
+<wizz:style>
+  .panel { display: none; }
+  .panel.is-open { display: block; }
+</wizz:style>
+```
+
+---
+
+## 11. Script globals (no import)
+
+- `onMount(callback)`: runs once, client-side, after the component is attached, children are mounted, and the initial update has run. May be async. The place for `window`, `document`, the URL, timers, observers, and fetches.
+- `onDestroy(callback)`: runs on `destroy()`, before children are destroyed and the root is removed. Clean up here; do not change state.
+- `persist(key, default)`: initializer for a top-level `let`.
+
+```html
+<script>
+  let theme = persist("theme", "light");
+
+  function toggle() {
+    theme = theme === "light" ? "dark" : "light";
+  }
+</script>
+
+<main>
+  <button on:click={toggle}>Theme: {theme}</button>
+</main>
+```
+
+`persist()` rules:
+
+- Top-level `let` only. Not on a prop (P044), a `const` (P045), or nested (P046/P051).
+- The key must be a string literal (P050), used verbatim as the `localStorage` key. Two components using the same key share state on purpose.
+- Mount: the stored JSON value wins over the default. Every statement mutation writes back. Tabs sync over BroadcastChannel (storage events as fallback).
+- SSR renders the default and hydration restores the stored value, so derive dependent values in `onMount`.
+
+Read browser-only APIs inside `onMount` so the server render and the hydration walk agree:
+
+```js
+let userId = "";
+
+onMount(() => {
+  const params = new URLSearchParams(document.location.search);
+  userId = params.get("id") ?? "";
+});
+```
+
+---
+
+## 12. Styles and head
+
+`<wizz:style>`: raw CSS, scoped by a generated `data-wizz-s` attribute on each selector's terminal element. `@keyframes` names gain the scope suffix. No expressions inside CSS (WIZZ-P017). Extracted into `dist/app.css` at build time. Put global tokens and resets in `App.css`.
+
+`<wizz:head>`: only `<title>`, `<meta>`, `<link>`. Expressions evaluate at render time; the head follows navigation, not state (no reactive head updates). With several titles mounted, the last in tree order wins. Keep `index.html` free of its own `<title>`.
+
+```html
+<wizz:head>
+  <title>{post.title} — My Blog</title>
+  <meta name="description" content={post.summary}>
+  <link rel="canonical" href={post.url}>
+</wizz:head>
+```
+
+---
+
+## 13. Routing
+
+Routes come from the file system. Paths are lowercased; `index.wizz` names its directory.
+
+```text
+src/App.wizz                         ->  /
+src/pages/index.wizz                 ->  /    (only one of these two may exist)
+src/pages/Home.wizz                  ->  /home
+src/pages/Admin/Users.wizz           ->  /admin/users
+src/pages/docs/getting-started.wizz  ->  /docs/getting-started
+```
+
+- Matching is exact. There are no dynamic segments like `/users/:id`; use query strings read in `onMount`.
+- Reserved prefixes: `/api`, `/runtime`, `/server`. Route collisions fail the build.
+- Links are ordinary `<a href>` document navigations; the server renders the next page and the router hydrates it. Cross-document View Transitions (`@view-transition { navigation: auto; }`) work with no JavaScript.
+- No router guard hook: protect data in server handlers and redirect from the page in `onMount`.
+- Unmatched paths render `<main>Not found</main>`. Unmatched `/api/*` paths answer 404 JSON.
+
+---
+
+## 14. Server API routes
+
+Code that must stay private (API keys, database calls) lives in `src/server/api/*.js`. Everything in a `.wizz` script ships to the browser.
+
+```js
+// src/server/api/greet.js → /api/greet
+export default async function handler(request) {
+  if (request.method !== "GET") {
+    return { status: 405, headers: { allow: "GET" }, body: { error: "Method not allowed" } };
+  }
+  const name = (request.query.get("name") ?? "").trim().slice(0, 40) || "friend";
+  return { message: "Hello, " + name + "!" };
+}
+```
+
+File → route: `health.js` → `/api/health`, `index.js` → `/api`, `users/search.js` → `/api/users/search`. Files and directories starting with `_` are importable helpers, never routes.
+
+`request` is a frozen object: `method`, `path` (decoded), `query` (`URLSearchParams`), `headers` (lowercased names), `body` (raw text or `null`, max 1 MB → 413), `json()` (async; malformed JSON → 400).
+
+| Handler returns | Response |
+| --- | --- |
+| Plain value (object, array, number…) | 200 JSON |
+| String | 200 plain text |
+| `undefined` | 204 |
+| `{ status, headers, body }` | Full control |
+| Thrown error | Fixed 500 `{"error":"Internal server error"}` |
+
+Secrets go in a gitignored `.env.server` at the project root (`KEY=VALUE` lines), never in `src/` or a `.wizz` file. Handlers read `process.env` at request time. Call handlers from components with ordinary `fetch("/api/...")`.
+
+---
+
+## 15. Server rendering and hydration
+
+Pages server-render by default. The server calls the page's `renderComponent()`, puts the HTML in `#app`, places an `application/wizz-state` script beside it, and the router hydrates instead of re-rendering. On any hydration mismatch it warns once and remounts cleanly.
+
+Server-renderable: static markup, text and attribute expressions, props, the initially taken `{#if}` branch, `{#each}`, and imported components (recursively, if each child is renderable). Event handlers and lifecycle hooks are client-only. Author scripts run on the server, so reading browser globals at the top level of a script breaks SSR: use `onMount`.
+
+---
+
+## 16. CLI
+
+```bash
+wizz init [dir] [--force]              # scaffold the starter project
+wizz dev [--port <n>] [--host <addr>]  # build, serve 127.0.0.1:3000, watch, SSR, live reload
+wizz build [in out] [--json] [--adapter node]
+wizz mcp [--root <dir>] [--allow-write]
+wizz update
+wizz install-vscode-extension
+wizz --version
+```
+
+- `wizz build` compiles every file (continuing past failures), writes route/API manifests, copies the runtime, `index.html`, `App.css`, and `src/server/`, and extracts styles to `dist/app.css`. Non-zero exit on any failure.
+- `wizz build --json` prints a `wizz-build-diagnostics@1` envelope: `{ format, ok, diagnostics: [{ code, severity, message, file, line, column }], files: [{ file, serverRenderable }] }`.
+- `wizz build --adapter node` adds `dist/server.mjs`, a standalone SSR + API host (`node dist/server.mjs`, default port 8080, `PORT` env).
+
+---
+
+## 17. MCP server (`wizz mcp`)
+
+A zero-dependency MCP server over stdio. Register it with `{ "command": "wizz", "args": ["mcp", "--root", "/path/to/project", "--allow-write"] }`.
+
+| Tool | Writes? | Purpose |
+| --- | --- | --- |
+| `project_overview` | No | Components, routes, API routes, versions. Start here. |
+| `language_contract` | No | The `.wizz` language contract and diagnostic catalog. |
+| `component_diagnostics` | No | Compile a file, inline source, or everything into structured records. |
+| `create_or_update_component` | Yes (needs `--allow-write`) | Write a `.wizz` file only if it compiles. |
+| `build_project` | `dist/` only | Run the build, return the JSON envelope. |
+| `dev_workflow` | No | Dev/build/deploy commands and the secrets rule. |
+
+Recommended loop: `project_overview` → `language_contract` → draft and check with `component_diagnostics` (inline `source`) → fix by switching on the diagnostic `code` and line/column → write with `create_or_update_component` → verify with `build_project`.
+
+---
+
+## 18. Diagnostic codes
+
+Codes are stable: never reworded into a different meaning or reused. `WIZZ-A###` is reserved and empty.
+
+Most common:
+
+| Code | Meaning | Fix |
+| --- | --- | --- |
+| WIZZ-G001 | Template has no root element | Wrap content in one native element |
+| WIZZ-P013 / P014 | Duplicate `<wizz:head>` / `<wizz:style>` | Merge the blocks |
+| WIZZ-P020 | Plain `<style>` | Use `<wizz:style>` |
+| WIZZ-P033 | Template expression error (call, ternary, etc.) | Compute in the script |
+| WIZZ-G002 | `{#each}` outside a native element | Wrap the block |
+| WIZZ-G003 | `{#each}` body needs one root element | Wrap the row |
+| WIZZ-G004 | Component inside `{#each}` | Native markup in rows |
+| WIZZ-G005 | Nested block inside `{#each}` | Precompute row values |
+| WIZZ-G006 | `on:` inside `{#each}` | Delegate from the container |
+| WIZZ-G008 | Children on a component tag | Pass props |
+| WIZZ-G010 | Component tag outside a native element | Wrap the tag |
+| WIZZ-G011 | `on:` on a component tag | Pass a callback prop |
+| WIZZ-G015 | Assignment to a prop | Copy into a local `let` |
+| WIZZ-G016 | Imports not on their own lines | One import per line |
+
+Parse stage (WIZZ-P): P001 tokenizer error · P002 malformed `{#each}` · P003 unexpected `{/each}` · P004 unexpected `{/if}` · P005 unexpected `{:else}` · P006 disallowed child in `<title>` · P007 disallowed element in `<wizz:head>` · P008 element in `<wizz:style>` · P009 attributes on `<wizz:head>` · P010 nested `<wizz:head>` · P011 attributes on `<wizz:style>` · P012 nested `<wizz:style>` · P013 duplicate `<wizz:head>` · P014 duplicate `<wizz:style>` · P015 block directive in `<wizz:head>` · P016 expression directly in `<wizz:head>` · P017 expression in `<wizz:style>` · P018 mismatched closing tag · P019 only title/meta/link in head · P020 plain `<style>` · P021 closing tag on void element · P022 unclosed tag · P023 unexpected closing tag · P024 unsupported token · P025 unclosed string in expression · P026 unexpected character in expression · P027 unparseable expression start · P028 expected `)` · P029 expected property after `.` · P030 unexpected expression token · P031 missing `{#if}` condition · P032 dynamic attribute missing expression · P033 template expression error · P034 invalid prop name · P035 reserved prop prefix `__wizz` · P036 `export let` without a name · P037 `export` not at top level · P038 one prop per `export let` · P039 invalid prop declaration · P040 duplicate prop · P041 prop missing value · P042 prop missing semicolon · P043 unsupported export syntax · P044 `persist()` on a prop · P045 `persist()` on a const · P046 `persist()` not top level · P047 statements trailing a `persist()` declaration · P048 `persist()` missing arguments · P049 `persist()` extra arguments · P050 `persist()` key not a string literal · P051 nested `persist()` · P052 unparseable `persist()` call · P053 expression depth budget exceeded · P054 template depth budget exceeded.
+
+Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native element · G003 `{#each}` body needs one root · G004 component in `{#each}` · G005 unsupported node in `{#each}` (nested blocks) · G006 `on:` in `{#each}` · G007 invalid prop attribute name · G008 children on component tag · G009 component missing id (internal) · G010 component tag outside native element · G011 `on:` on component tag · G012 event directive missing handler · G013 invalid event directive · G014 disallowed child in `<title>` · G015 assignment to a prop · G016 imports must be on their own lines · G017 reserved reactive name · G018 server build: unsupported node · G019 server build: unsupported head node · G020 server build: component not server-renderable · G021 void element with children · G022 hydration: unsupported node · G023 hydration: unsupported node in `{#each}` · G024 `persist()` rewrite drift (internal).
+
+---
+
+## 19. Habits from other frameworks that fail
+
+| You might write | Wizz.js equivalent |
+| --- | --- |
+| `{items.length}`, `{fmt(x)}`, `{a ? b : c}`, `{a && b}` | Compute `let count = items.length;` in `<script>`, render `{count}` |
+| `class="btn {variant}"` | `let btnClass = "btn " + variant;` then `class={btnClass}` |
+| `<Card><p>Body</p></Card>` / `<slot>` | `<Card body="..." />` or compose native elements around the tag |
+| `<Child on:save={fn} />` / `@save` / `onSave` event emit | Callback prop: `<Child onSave={fn} />`, child calls `onSave(value)` |
+| `{#each}` row with `on:click` or a component | Native row with `data-id`, one delegated listener on the parent |
+| `items.push(x)` | `items = [...items, x];` |
+| `$:` reactive statements, `computed`, `useMemo` | A `recompute()` function called after changes and in `onMount` |
+| `useState`, `ref()`, `$state` | Top-level `let` |
+| `import { onMount } from "..."` | Just call `onMount(...)`: it is a compiler global |
+| `window.x` at the top of `<script>` | Read it inside `onMount` |
+| `/users/[id].wizz`, `/users/:id` | Exact routes only: `/user?id=42` read in `onMount` |
+| `<style>` | `<wizz:style>` |
+| Two sibling root elements | One wrapping native element |
+
+---
+
+## 20. Complete example
+
+```html
+<script>
+  import Badge from "./components/Badge.wizz";
+
+  let draft = "";
+  let nextId = 3;
+  let tasks = persist("tasks", [
+    { id: 1, title: "Read the contract", done: true, rowClass: "task is-done" },
+    { id: 2, title: "Build a keyed list", done: false, rowClass: "task" }
+  ]);
+  let remaining = 0;
+  let remainingLabel = "0 left";
+
+  function recompute() {
+    remaining = tasks.filter((task) => !task.done).length;
+    remainingLabel = remaining + " left";
+  }
+
+  function handleDraft(event) {
+    draft = event.target.value;
+  }
+
+  function addTask(event) {
+    event.preventDefault();
+    const title = draft.trim();
+    if (!title) return;
+    tasks = [...tasks, { id: nextId, title, done: false, rowClass: "task" }];
+    nextId += 1;
+    draft = "";
+    recompute();
+  }
+
+  function handleListClick(event) {
+    const row = event.target.closest("[data-id]");
+    if (!row) return;
+    const id = Number(row.dataset.id);
+    tasks = tasks.map((task) => {
+      if (task.id !== id) return task;
+      const done = !task.done;
+      return { ...task, done, rowClass: done ? "task is-done" : "task" };
+    });
+    recompute();
+  }
+
+  onMount(() => {
+    nextId = Math.max(0, ...tasks.map((task) => task.id)) + 1;
+    recompute();
+  });
+</script>
+
+<wizz:head>
+  <title>Tasks</title>
+</wizz:head>
+
+<main class="tasks">
+  <h1>Tasks</h1>
+  <form class="add" on:submit={addTask}>
+    <input value={draft} on:input={handleDraft} placeholder="New task" aria-label="New task" />
+    <button type="submit">Add</button>
+  </form>
+  <ul class="list" on:click={handleListClick}>{#each tasks as task (task.id)}<li class={task.rowClass} data-id={task.id}>{task.title}</li>{/each}</ul>
+  <footer class="foot">
+    <Badge label={remainingLabel} />
+  </footer>
+</main>
+
+<wizz:style>
+  .tasks { display: grid; gap: 1rem; max-inline-size: 32rem; margin-inline: auto; }
+  .foot { display: flex; justify-content: flex-end; }
+  .add { display: flex; gap: 0.5rem; }
+  .list { margin: 0; padding: 0; list-style: none; }
+  .task { padding-block: 0.5rem; cursor: pointer; }
+  .task.is-done { opacity: 0.5; text-decoration: line-through; }
+</wizz:style>
+```
+
+```html
+<!-- src/components/Badge.wizz -->
+<script>
+  export let label = "New";
+</script>
+
+<span class="badge">{label}</span>
+
+<wizz:style>
+  .badge { padding: 0.2rem 0.6rem; border-radius: 999px; background: #eee; font-size: 0.85rem; }
+</wizz:style>

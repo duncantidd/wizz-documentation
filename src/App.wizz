@@ -61,6 +61,37 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
     { id: "t6", href: "/docs/mcp", kicker: "Tooling", title: "MCP Server", body: "Six tools for agents, with a fixed root and gated writes." }
   ];
 
+  // Cards stay visible in the server-rendered markup; once hydrated, the
+  // page arms the fly-in so content never depends on JavaScript to show.
+  let revealState = "off";
+  let flyObserver = null;
+
+  function handleFly(entries) {
+    const entering = entries
+      .filter((entry) => entry.isIntersecting)
+      .sort((a, b) => a.boundingClientRect.top - b.boundingClientRect.top || a.boundingClientRect.left - b.boundingClientRect.left);
+    entering.forEach((entry, index) => {
+      entry.target.style.setProperty("--i", index);
+      entry.target.classList.add("is-in");
+    });
+    // Re-arm only cards that dropped below the viewport, so scrolling back
+    // down replays the fly-in while cards scrolled past stay put.
+    for (const entry of entries) {
+      if (!entry.isIntersecting && entry.boundingClientRect.top > 0) entry.target.classList.remove("is-in");
+    }
+  }
+
+  onMount(() => {
+    if (!("IntersectionObserver" in window)) return;
+    flyObserver = new IntersectionObserver(handleFly, { rootMargin: "0px 0px -8% 0px", threshold: 0.15 });
+    for (const card of document.querySelectorAll(".landing .fly")) flyObserver.observe(card);
+    revealState = "armed";
+  });
+
+  onDestroy(() => {
+    flyObserver?.disconnect();
+  });
+
   function trackSheen(event) {
     const card = event.target.closest(".sheen");
     if (!card) return;
@@ -75,7 +106,7 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
   <meta name="description" content="Wizz.js is a zero-dependency JavaScript framework. Single-file .wizz components compile to plain DOM code, with server rendering, scoped styles, and API routes built in.">
 </wizz:head>
 
-<div class="site landing">
+<div class="site landing" data-reveal={revealState}>
   <TopNav section="home" />
 
   <main id="main" class="page" on:pointermove={trackSheen}>
@@ -99,7 +130,7 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
         <p class="eyebrow">Why Wizz</p>
         <h2 id="features-title">Less runtime. More platform.</h2>
       </header>
-      <div class="features">{#each features as feature (feature.id)}<article class="feature glass sheen reveal"><span class="f-icon"><span class={feature.icon} aria-hidden="true"></span></span><h3>{feature.title}</h3><p>{feature.body}</p></article>{/each}</div>
+      <div class="features">{#each features as feature (feature.id)}<article class="feature glass sheen fly"><span class="f-icon"><span class={feature.icon} aria-hidden="true"></span></span><h3>{feature.title}</h3><p>{feature.body}</p></article>{/each}</div>
     </section>
 
     <section class="band" aria-labelledby="pipeline-title">
@@ -107,7 +138,7 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
         <p class="eyebrow">Under the hood</p>
         <h2 id="pipeline-title">From <code>.wizz</code> to pixels in four stages</h2>
       </header>
-      <ol class="pipeline">{#each steps as step (step.id)}<li class="step glass reveal"><span class="n">{step.n}</span><h3>{step.title}</h3><p>{step.body}</p></li>{/each}</ol>
+      <ol class="pipeline">{#each steps as step (step.id)}<li class="step glass fly"><span class="n">{step.n}</span><h3>{step.title}</h3><p>{step.body}</p></li>{/each}</ol>
     </section>
 
     <section class="band" aria-labelledby="docs-title">
@@ -115,7 +146,7 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
         <p class="eyebrow">Documentation</p>
         <h2 id="docs-title">Everything, in depth</h2>
       </header>
-      <div class="tiles">{#each tiles as tile (tile.id)}<a class="tile glass sheen reveal" href={tile.href}><span class="t-kicker">{tile.kicker}</span><span class="t-title">{tile.title}</span><span class="t-body">{tile.body}</span><span class="t-go icon icon-arrow" aria-hidden="true"></span></a>{/each}</div>
+      <div class="tiles">{#each tiles as tile (tile.id)}<a class="tile glass sheen fly" href={tile.href}><span class="t-kicker">{tile.kicker}</span><span class="t-title">{tile.title}</span><span class="t-body">{tile.body}</span><span class="t-go icon icon-arrow" aria-hidden="true"></span></a>{/each}</div>
     </section>
 
     <footer class="foot">
@@ -263,11 +294,6 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
 
   .feature {
     padding: 1.5rem;
-    transition: transform var(--dur) var(--ease-out);
-  }
-
-  .feature:hover {
-    transform: translateY(-3px);
   }
 
   .f-icon {
@@ -342,12 +368,10 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
     padding: 1.4rem 3.25rem 1.4rem 1.4rem;
     color: var(--ink);
     text-decoration: none;
-    transition: transform var(--dur) var(--ease-out);
   }
 
   .tile:hover {
     color: var(--ink);
-    transform: translateY(-3px);
   }
 
   .t-kicker {
@@ -380,6 +404,34 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
     transform: translateX(4px);
   }
 
+  /* Card fly-in + hover lift. The entrance uses the individual translate and
+     scale properties so it never fights the hover's transform. Transitions
+     live only on .is-in, so re-arming a card hides it instantly. */
+  .fly {
+    transition: transform var(--dur) var(--ease-out);
+  }
+
+  @media (hover: hover) {
+    .fly:hover {
+      transform: translateY(-5px);
+    }
+  }
+
+  [data-reveal="armed"] .fly:not(.is-in) {
+    opacity: 0;
+    translate: 0 3rem;
+    scale: 0.94;
+  }
+
+  [data-reveal="armed"] .fly.is-in {
+    --delay: calc(var(--i, 0) * var(--stagger) * 1.4);
+    transition:
+      transform var(--dur) var(--ease-out),
+      opacity var(--dur-slow) var(--ease-out) var(--delay),
+      translate 900ms var(--ease-spring) var(--delay),
+      scale 900ms var(--ease-spring) var(--delay);
+  }
+
   .foot {
     padding-block: 2rem 3rem;
     border-block-start: 1px solid var(--hairline);
@@ -391,6 +443,16 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
   @media (prefers-reduced-motion: reduce) {
     .shine {
       animation: none;
+    }
+
+    /* Fade only: no travel, no lift. */
+    [data-reveal="armed"] .fly:not(.is-in) {
+      translate: none;
+      scale: none;
+    }
+
+    .fly:hover {
+      transform: none;
     }
   }
 </wizz:style>
