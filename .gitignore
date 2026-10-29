@@ -3,3 +3,5 @@ dist/
 
 # Server-side secrets (see src/server/api)
 .env.server
+
+.claude/launch.json
