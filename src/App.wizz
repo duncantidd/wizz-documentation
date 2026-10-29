@@ -112,7 +112,7 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
   <main id="main" class="page" on:pointermove={trackSheen}>
     <section class="hero" aria-labelledby="hero-title">
       <div class="copy">
-        <h1 id="hero-title" class="rise title" style="--i: 0">The JavaScript framework with <span class="shine">zero dependencies.</span></h1>
+        <h1 id="hero-title" class="rise title" style="--i: 0">The <mark class="mark">JavaScript</mark> framework with <span class="shine">zero dependencies.</span></h1>
         <p class="rise lede" style="--i: 1">Wizz.js is a full-stack framework for building web apps. Write components in single <code>.wizz</code> files and the compiler turns them into plain JavaScript that updates the DOM directly. Server rendering, scoped styles, and API routes are built in — no Virtual DOM, no npm packages to ship. This site runs on it.</p>
         <div class="rise cta" style="--i: 2">
           <a class="btn btn-primary btn-hero" href="/docs/getting-started">Get started <span class="icon icon-arrow" aria-hidden="true"></span></a>
@@ -182,6 +182,14 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
     letter-spacing: -0.045em;
     text-wrap: balance;
     text-shadow: var(--ink-shadow);
+  }
+
+  /* Mirrors the ::selection tint so the word reads as already highlighted. */
+  .mark {
+    background-color: color-mix(in oklch, var(--accent) 35%, transparent);
+    color: inherit;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
   }
 
   .shine {
