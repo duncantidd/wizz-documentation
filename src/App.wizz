@@ -1,25 +1,10 @@
 <script>
   import TopNav from "./components/TopNav.wizz";
-  import Counter from "./components/Counter.wizz";
   import CodeBlock from "./components/CodeBlock.wizz";
 
   const installSnippet = `curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/install-cli.sh | bash
 wizz init my-app
 cd my-app && wizz dev   # http://127.0.0.1:3000`;
-
-  const counterSource = `<script>
-  // Reactive, persisted, and synced across tabs.
-  let count = persist("wizz_docs_counter", 0);
-
-  function increment() {
-    count += 1;
-  }
-<\/script>
-
-<div class="counter">
-  <output>{count}</output>
-  <button on:click={increment}>+</button>
-</div>`;
 
   const features = [
     {
@@ -86,8 +71,8 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
 </script>
 
 <wizz:head>
-  <title>Wizz.js — the zero-dependency compiled component framework</title>
-  <meta name="description" content="Wizz.js compiles single-file .wizz components to platform-native DOM code, server-renders every page, and hydrates without a Virtual DOM or a single runtime dependency.">
+  <title>Wizz.js — the zero-dependency JavaScript framework</title>
+  <meta name="description" content="Wizz.js is a zero-dependency JavaScript framework. Single-file .wizz components compile to plain DOM code, with server rendering, scoped styles, and API routes built in.">
 </wizz:head>
 
 <div class="site landing">
@@ -96,30 +81,17 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
   <main id="main" class="page" on:pointermove={trackSheen}>
     <section class="hero" aria-labelledby="hero-title">
       <div class="copy">
-        <p class="rise kicker" style="--i: 0"><span class="badge badge-mint">v1.17 · syntax 1.4 · output 1.8</span><span class="badge badge-amber">0 dependencies</span></p>
-        <h1 id="hero-title" class="rise title" style="--i: 1">Components that compile to <span class="shine">the platform.</span></h1>
-        <p class="rise lede" style="--i: 2">Wizz.js turns single-file <code>.wizz</code> components into native DOM instructions and static scoped CSS. Every page server-renders, hydrates in place, and ships with no Virtual DOM and no runtime packages — this site included.</p>
-        <div class="rise cta" style="--i: 3">
-          <a class="btn btn-primary" href="/docs/getting-started">Get started <span class="icon icon-arrow" aria-hidden="true"></span></a>
-          <a class="btn" href="/docs/architecture">How it works</a>
+        <h1 id="hero-title" class="rise title" style="--i: 0">The JavaScript framework with <span class="shine">zero dependencies.</span></h1>
+        <p class="rise lede" style="--i: 1">Wizz.js is a full-stack framework for building web apps. Write components in single <code>.wizz</code> files and the compiler turns them into plain JavaScript that updates the DOM directly. Server rendering, scoped styles, and API routes are built in — no Virtual DOM, no npm packages to ship. This site runs on it.</p>
+        <div class="rise cta" style="--i: 2">
+          <a class="btn btn-primary btn-hero" href="/docs/getting-started">Get started <span class="icon icon-arrow" aria-hidden="true"></span></a>
+          <a class="btn btn-hero" href="/docs/architecture">How it works</a>
         </div>
-        <div class="rise install" style="--i: 4">
+        <div class="rise install" style="--i: 3">
           <CodeBlock code={installSnippet} lang="bash" title="terminal" />
         </div>
       </div>
 
-      <div class="rise demo glass sheen" style="--i: 3">
-        <div class="demo-head">
-          <span class="badge">Running on Wizz.js</span>
-          <span class="hint">open a second tab — it syncs</span>
-        </div>
-        <div class="demo-live">
-          <Counter label="Live counter" />
-        </div>
-        <div class="demo-code">
-          <CodeBlock code={counterSource} lang="wizz" title="Counter.wizz" />
-        </div>
-      </div>
     </section>
 
     <section class="band" aria-labelledby="features-title">
@@ -162,26 +134,22 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
   }
 
   .hero {
-    display: grid;
-    grid-template-columns: minmax(0, 1.05fr) minmax(0, 1fr);
-    gap: clamp(2rem, 5vw, 4rem);
-    align-items: center;
-    padding-block: clamp(3rem, 8vw, 6rem) clamp(2rem, 5vw, 4rem);
+    padding-block: clamp(4rem, 12vw, 8rem) clamp(2.5rem, 6vw, 4.5rem);
+    text-align: center;
   }
 
-  .kicker {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    margin: 0;
+  .copy {
+    max-inline-size: 72rem;
+    margin-inline: auto;
   }
 
   .title {
-    margin: 1.25rem 0 0;
-    font-size: clamp(2.6rem, 1.6rem + 4.4vw, 4.6rem);
+    margin: 0;
+    font-size: clamp(2.8rem, 1.4rem + 5vw, 6rem);
     font-weight: 850;
     line-height: 1.02;
     letter-spacing: -0.045em;
+    text-wrap: balance;
     text-shadow: var(--ink-shadow);
   }
 
@@ -200,11 +168,12 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
   }
 
   .lede {
-    max-inline-size: 36rem;
-    margin: 1.25rem 0 0;
+    max-inline-size: 50rem;
+    margin: 1.5rem auto 0;
     color: var(--ink-2);
-    font-size: 1.15rem;
-    line-height: 1.7;
+    font-size: clamp(1.1rem, 1rem + 0.35vw, 1.3rem);
+    line-height: 1.65;
+    text-wrap: pretty;
   }
 
   .lede code {
@@ -218,41 +187,42 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
   .cta {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.75rem;
-    margin-block-start: 2rem;
+    justify-content: center;
+    gap: 1rem;
+    margin-block-start: 2.5rem;
+  }
+
+  .btn-hero {
+    min-block-size: 3.5rem;
+    padding-inline: 2rem;
+    font-size: 1.1rem;
+  }
+
+  .btn-primary.btn-hero {
+    padding-inline: 2.5rem;
+    font-weight: 700;
+    box-shadow:
+      0 0 0 1px color-mix(in oklch, var(--accent) 30%, transparent),
+      0 18px 50px -12px color-mix(in oklch, var(--accent) 90%, transparent),
+      inset 0 1px 0 oklch(1 0 0 / 0.6);
+  }
+
+  .btn-primary.btn-hero:hover {
+    transform: translateY(-2px);
+  }
+
+  .btn-primary.btn-hero .icon {
+    transition: transform var(--dur) var(--ease-out);
+  }
+
+  .btn-primary.btn-hero:hover .icon {
+    transform: translateX(3px);
   }
 
   .install {
-    max-inline-size: 36rem;
-    margin-block-start: 1.75rem;
-  }
-
-  .demo {
-    display: grid;
-    gap: 1.1rem;
-    padding: clamp(1rem, 3vw, 1.5rem);
-  }
-
-  .demo-head {
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: space-between;
-    align-items: center;
-    gap: 0.5rem;
-  }
-
-  .hint {
-    color: var(--ink-3);
-    font-size: 0.8rem;
-  }
-
-  .demo-live {
-    padding: 1.5rem 1rem;
-    border-radius: var(--r-md);
-    border: 1px solid var(--well-border);
-    background:
-      radial-gradient(100% 120% at 50% 0%, color-mix(in oklch, var(--accent) 16%, transparent), transparent 70%),
-      var(--well);
+    max-inline-size: 60rem;
+    margin: 2.5rem auto 0;
+    text-align: start;
   }
 
   .band {
@@ -416,12 +386,6 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
     color: var(--ink-3);
     font-size: 0.88rem;
     text-align: center;
-  }
-
-  @media (max-width: 60rem) {
-    .hero {
-      grid-template-columns: minmax(0, 1fr);
-    }
   }
 
   @media (prefers-reduced-motion: reduce) {
