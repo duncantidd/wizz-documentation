@@ -117,7 +117,7 @@ code --install-extension wizz-vscode-<version>.vsix`;
 
         <h2 id="install" class="reveal">Installing the CLI</h2>
         <CodeBlock code={installCmd} lang="bash" title="terminal" />
-        <p>The installer puts the compiler and runtime in <code>$XDG_DATA_HOME/wizz</code> (default <code>~/.local/share/wizz</code>) and the launcher in <code>$XDG_BIN_HOME</code> (default <code>~/.local/bin</code>). It needs no administrator privileges and never edits shell profiles. To uninstall, delete both:</p>
+        <p>The installer puts the compiler and runtime in <code>$XDG_DATA_HOME/wizz</code> (default <code>~/.local/share/wizz</code>) and the launcher in <code>$XDG_BIN_HOME</code> (default <code>~/.local/bin</code>). It needs no administrator privileges and never edits shell profiles. To check the release checksum yourself before running anything, see <a href="/docs/getting-started#verify">Verify before installing</a>. To uninstall, delete both:</p>
         <CodeBlock code={uninstallCmd} lang="bash" title="uninstall" />
 
         <h2 id="commands" class="reveal">Command summary</h2>

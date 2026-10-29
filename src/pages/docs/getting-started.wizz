@@ -9,6 +9,7 @@
   const toc = [
     { id: "requirements", label: "Requirements" },
     { id: "install", label: "Install the CLI" },
+    { id: "verify", label: "Verify before installing" },
     { id: "scaffold", label: "Scaffold a project" },
     { id: "structure", label: "Project structure" },
     { id: "first-component", label: "Your first component" },
@@ -19,7 +20,31 @@
 
   const installCmd = `curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/install-cli.sh | bash`;
 
-  const pathCmd = `# Bash / Zsh — add to your shell profile, then open a new shell
+  const inspectCmd = `# Fetch the installer from a release tag, read it, then run it
+curl -fsSLO https://raw.githubusercontent.com/duncantidd/wizz.js/v1.17.0/scripts/install-cli.sh
+less install-cli.sh
+bash install-cli.sh`;
+
+  const manualCmd = `version=1.17.0
+base=https://github.com/duncantidd/wizz.js/releases/download/v$version
+
+# 1. Download the tarball and the checksum file from the same release
+curl -fsSLO "$base/wizz-$version.tgz"
+curl -fsSLO "$base/SHA256SUMS-$version.txt"
+
+# 2. Check the tarball against the published sha256
+sha256sum -c --ignore-missing "SHA256SUMS-$version.txt"          # Linux
+shasum -a 256 -c --ignore-missing "SHA256SUMS-$version.txt"      # macOS
+# wizz-1.17.0.tgz: OK
+
+# 3. Install the file you verified, using the install-cli.sh you read above
+bash install-cli.sh "./wizz-$version.tgz"`;
+
+  const digestCmd = `# GitHub records its own sha256 for every release asset
+curl -fsSL https://api.github.com/repos/duncantidd/wizz.js/releases/tags/v1.17.0 \\
+  | grep -E '"(name|digest)"'`;
+
+  const pathCmd =`# Bash / Zsh — add to your shell profile, then open a new shell
 export PATH="$HOME/.local/bin:$PATH"
 
 wizz --version
@@ -122,6 +147,22 @@ PORT=3000 node dist/server.mjs`;
         <p>The framework lands in <code>$XDG_DATA_HOME/wizz</code> (default <code>~/.local/share/wizz</code>) and the <code>wizz</code> launcher in <code>$XDG_BIN_HOME</code> (default <code>~/.local/bin</code>). Make sure the launcher directory is on your <code>PATH</code>:</p>
         <CodeBlock code={pathCmd} lang="bash" title="~/.bashrc" />
         <Callout kind="tip" title="Upgrading" body="The install is a snapshot, not a link to a repository. Run wizz update to fetch the latest release and swap it in place — the old installation is kept aside until the new one is ready, and the launcher keeps working." />
+
+        <h2 id="verify" class="reveal">Verify before installing</h2>
+        <p>Piping a script into <code>bash</code> runs it before you can read it. If you would rather not do that, every step can be done by hand. Here is what the one-liner already checks for you:</p>
+        <ul>
+          <li><strong>Checksum check, fails closed.</strong> The installer reads the tarball's <code>sha256</code> digest from the GitHub Releases API, hashes the download, and refuses to install if they differ, or if the release has no digest.</li>
+          <li><strong>HTTPS only.</strong> Downloads and every redirect hop must use <code>https://</code>. The URL the tarball is actually served from is checked again after the transfer.</li>
+          <li><strong>Contents check.</strong> A tarball without <code>package/scripts/cli.js</code> is rejected before anything is moved into place.</li>
+        </ul>
+        <p>None of this covers the installer script itself. <code>curl … | bash</code> runs whatever <code>main</code> serves at that moment. To review the script first, download it from a release tag and read it:</p>
+        <CodeBlock code={inspectCmd} lang="bash" title="terminal" />
+        <h3>Fully manual install</h3>
+        <p>Every release includes <code>{"SHA256SUMS-<version>.txt"}</code> next to <code>{"wizz-<version>.tgz"}</code> and the VS Code <code>.vsix</code>. Download the tarball, check it yourself, then give its path to the installer. A local path makes the installer skip the network entirely:</p>
+        <CodeBlock code={manualCmd} lang="bash" title="terminal" />
+        <p>For a second, independent source, compare the hash with the digest GitHub stores for the asset. This is the same value the one-line installer checks against:</p>
+        <CodeBlock code={digestCmd} lang="bash" title="terminal" />
+        <Callout kind="warn" title="What a checksum does and doesn't prove" body="A matching sha256 means your file is byte-for-byte what the release published, with nothing corrupted, truncated, or swapped in transit. It doesn't prove who published it: the checksum file and the tarball live in the same GitHub release, so anyone able to replace one could replace both. Releases aren't signed yet, so your trust ultimately rests on the duncantidd/wizz.js repository and GitHub." />
 
         <h2 id="scaffold" class="reveal">Scaffold a project</h2>
         <p><code>wizz init</code> writes the showcase starter: a design-token stylesheet, a landing page with a reactive document head, a counter whose value persists across reloads and tabs, a server-rendered <code>/home</code> page, and a sample API route. It runs correctly with no manual editing.</p>

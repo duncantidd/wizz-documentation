@@ -33,6 +33,7 @@
   // Quick-jump index: every page plus its key sections.
   const INDEX = [
     ["Getting Started", "Install the CLI", "/docs/getting-started#install", "curl installer node path"],
+    ["Getting Started", "Verify before installing", "/docs/getting-started#verify", "checksum sha256 integrity manual install security"],
     ["Getting Started", "Scaffold a project", "/docs/getting-started#scaffold", "wizz init starter"],
     ["Getting Started", "Project structure", "/docs/getting-started#structure", "layout src pages components dist"],
     ["Getting Started", "Your first component", "/docs/getting-started#first-component", "counter hello"],

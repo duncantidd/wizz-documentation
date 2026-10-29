@@ -20,6 +20,19 @@
         if (sidebar === "collapsed" || sidebar === "open") root.dataset.sidebar = sidebar;
       } catch (error) {}
     })();
+
+    // Following an in-page #anchor (or Back/Forward between anchors) fires
+    // popstate, and the router answers every popstate by remounting the page
+    // from scratch, which scrambles the shell. Listeners on one target run in
+    // registration order, so this one, added before /runtime/main.js loads,
+    // stops hash-only history changes before the router sees them and leaves
+    // the browser's native anchor scroll to do its job.
+    (function () {
+      var pagePath = location.pathname;
+      window.addEventListener("popstate", function (event) {
+        if (location.pathname === pagePath) event.stopImmediatePropagation();
+      });
+    })();
   </script>
   <!-- Import the stylesheet App.css -->
   <link rel="stylesheet" href="/App.css">

@@ -52,6 +52,9 @@
 <wizz:style>
   .entry {
     display: grid;
+    /* minmax(0, 1fr) rather than the implicit auto track: an auto track grows
+       to the min-content of long code lines and pushes every row past the card. */
+    grid-template-columns: minmax(0, 1fr);
     gap: 0.9rem;
     margin-block-start: 1.5rem;
     padding: clamp(1rem, 3vw, 1.5rem);
