@@ -1,0 +1,11 @@
+# Render Blueprint: New > Blueprint in the Render dashboard, pick this repo.
+# Render builds the Dockerfile and injects PORT; server.mjs listens on it.
+services:
+  - type: web
+    name: wizz-documentation
+    runtime: docker
+    plan: free
+    dockerfilePath: ./Dockerfile
+    healthCheckPath: /api/health
+    autoDeploy: true
+    # Add server-side secrets in the dashboard (Environment), not here.

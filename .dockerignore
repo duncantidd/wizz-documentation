@@ -1,0 +1,17 @@
+# Rebuilt inside the image
+dist/
+node_modules/
+
+# Never bake secrets into an image; set them as environment variables instead
+.env.server
+.env*
+
+# Not needed to build the site
+.git/
+.claude/
+.skills/
+.mcp.json
+prompt.txt
+Dockerfile
+docker-compose.yml
+render.yaml

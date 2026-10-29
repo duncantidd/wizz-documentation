@@ -1,0 +1,14 @@
+# Local production check: docker compose up --build, then open http://localhost:8080
+services:
+  web:
+    build: .
+    image: wizz-documentation
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+    # Optional server-side secrets for src/server/api handlers.
+    env_file:
+      - path: .env.server
+        required: false
+    restart: unless-stopped
