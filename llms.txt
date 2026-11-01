@@ -1,16 +1,18 @@
 # Wizz.js
 
-> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.17.0, syntax 1.4.1, output 1.8.2.
+> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.17.1, syntax 1.4.2, output 1.8.3.
 
 Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail to compile. Before writing a `.wizz` file, read [the full reference](/llms-full.txt). The rules that trip agents up most:
 
 - A template has exactly one native root element.
-- `{...}` accepts only identifiers, member access (`a.b.c`), string/number literals, and strict equality (`a === "b"`). No function calls, ternaries, arithmetic, or `&&`/`||`: compute values in `<script>` and reference them by name.
-- Dynamic attributes must be unquoted: `class={cardClass}`. A quoted value such as `class="card {state}"` renders the braces literally.
+- `{...}` accepts only identifiers, member access (`a.b.c`), string and integer literals, `+ - * /` with parentheses, and strict equality (`a === "b"`). No function calls, ternaries, `!`, `!==`, `<`/`>`, or `&&`/`||`: compute values in `<script>` and reference them by name.
+- Dynamic attributes must be unquoted: `class={cardClass}` or `class={"card " + state}`. A quoted value such as `class="card {state}"` renders the braces literally. Dynamic attributes other than `value`/`checked`/`disabled` are stringified and never removed, so `hidden={false}` still hides. There is no `bind:`.
 - Components are self-closing tags inside a native element: no children, no slots, and no `on:` directives on component tags (pass callback props).
 - `{#each}` sits inside a native element, has one native root element per row, and its body may not contain components, `on:` directives, or nested `{#if}`/`{#each}`. Delegate events from the parent.
 - Top-level `let` is reactive; update by reassignment (`items = [...items, x]`), not mutation (`items.push(x)`).
-- `{#if}` picks its branch once at mount. Toggle interactive visibility with a bound class.
+- `{#if}` picks its branch once at mount, and there is no `{:else if}`. Toggle interactive visibility with a bound class.
+- Assignments in inline `on:` handlers update the DOM (`on:input={(e) => name = e.target.value}`). Releases before 1.17.1 did not track them; upgrade with `wizz update`.
+- The Wizz MCP server's `project_overview` and `language_contract` tools return these limits as a table with working patterns (1.17.1+).
 - `onMount`, `onDestroy`, and `persist` are compiler globals: call them without importing. Read `window`/`document` only inside `onMount`.
 
 ## Getting started

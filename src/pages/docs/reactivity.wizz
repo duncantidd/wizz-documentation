@@ -68,10 +68,15 @@ onMount(() => { ready = true; });
 // Not tracked: method calls, expression positions, unbraced bodies
 items.push(next);                 // no assignment: reassign the array instead
 log(count = 5);                   // assignment inside a call argument
-if (done) status = "ok";          // unbraced control-flow body: add braces`;
+if (done) status = "ok";          // unbraced control-flow body: add braces
+
+// Inline on: handlers follow the same rules (compiler 1.17.1 and later)
+// on:input={(e) => name = e.target.value}    tracked
+// on:click={() => ok ? a = 1 : 0}            not tracked: inside an expression`;
 
   const eventSource = `<script>
   let query = "";
+  let name = "";
   let count = 0;
 
   function handleInput(event) {
@@ -89,6 +94,7 @@ if (done) status = "ok";          // unbraced control-flow body: add braces`;
 
 <form on:submit={handleSubmit}>
   <input value={query} on:input={handleInput} />
+  <input value={name} on:input={(event) => name = event.target.value} />
   <button type="button" on:click={(event) => add(5)}>+5</button>
 </form>`;
 
@@ -218,8 +224,10 @@ if (done) status = "ok";          // unbraced control-flow body: add braces`;
           <li>Event directives work on <strong>native elements only</strong> — pass callbacks to components as props.</li>
           <li>Handlers are client-only; server rendering skips them, and hydration attaches them after the adoption walk passes.</li>
           <li><code>destroy()</code> removes every listener Wizz attached.</li>
+          <li>Assignments inside an inline arrow or <code>function</code> handler are tracked like assignments in script functions, so a two-way input needs no separate setter. An inline handler that assigns a prop fails with <code>WIZZ-G015</code>.</li>
         </ul>
-        <Callout kind="tip" title="Prefer named handlers" body="Inline arrows compile, but named functions keep templates scannable, are easy to unit-test, and make the mutation the rewriter tracks obvious." />
+        <Callout kind="note" title="Upgrading from an earlier release" body="Before 1.17.1, an assignment written directly in an inline handler changed the variable but never updated the DOM. If wizz --version reports an older compiler, run wizz update." />
+        <Callout kind="tip" title="Prefer named handlers" body="Inline arrows are reactive, but named functions keep templates scannable and are easy to unit-test." />
 
         <h2 id="lists" class="reveal">Lists with {"{#each}"}</h2>
         <p>Give each row a key when node identity should follow the item — for example when rows reorder. On reassignment Wizz retains matching keys, moves them into the new order, updates their text and attributes, creates new keys, and removes missing ones. Duplicate keys throw.</p>

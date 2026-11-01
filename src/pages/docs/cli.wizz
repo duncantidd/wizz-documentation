@@ -37,7 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/ins
 # From a clone of the repository
 ./scripts/install-cli.sh            # latest release
 ./scripts/install-cli.sh --local    # the working tree (developing Wizz itself)
-./scripts/install-cli.sh ./wizz-1.17.0.tgz   # a specific tarball (path or URL)`;
+./scripts/install-cli.sh ./wizz-1.17.1.tgz   # a specific tarball (path or URL)`;
 
   const uninstallCmd = `rm -f "\${XDG_BIN_HOME:-$HOME/.local/bin}/wizz"
 rm -rf "\${XDG_DATA_HOME:-$HOME/.local/share}/wizz"`;
@@ -95,7 +95,7 @@ wizz mcp --root /path/to/project --allow-write   # enable compile-gated writes`;
 # without the CLI
 code --install-extension wizz-vscode-<version>.vsix`;
   const versionCmd = `wizz --version
-# wizz 1.17.0 (compiler 1.17.0, syntax 1.4.1, output 1.8.2)`;
+# wizz 1.17.1 (compiler 1.17.1, syntax 1.4.2, output 1.8.3)`;
 </script>
 
 <wizz:head>

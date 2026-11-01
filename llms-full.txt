@@ -2,7 +2,7 @@
 
 > Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
 
-Versions covered: compiler 1.17.0, syntax 1.4.1, output 1.8.2 (`wizz --version`).
+Versions covered: compiler 1.17.1, syntax 1.4.2, output 1.8.3 (`wizz --version`).
 Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
 
 Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
@@ -82,10 +82,11 @@ A `.wizz` file is one component: a template with exactly one native root element
 
 1. Identifiers: `{title}`
 2. Member access: `{user.profile.name}`
-3. String and number literals: `{"v1.0"}`, `{42}`
-4. Strict equality: `{role === "admin"}` (mainly in `{#if}`)
+3. String and integer literals: `{"v1.0"}`, `{42}` (no decimals: `{1.5}` fails)
+4. Arithmetic `+ - * /` and parentheses: `{(count + 1) * 2}`, `{"card " + kind}` (`+` also concatenates strings)
+5. Strict equality: `{role === "admin"}` (mainly in `{#if}`)
 
-Everything else is unsupported: function calls, ternaries, arithmetic, string concatenation, `&&`, `||`, `!`, array methods, template literals. Calls and ternaries fail with WIZZ-P033; treat anything outside the subset as unsupported even if it happens to parse.
+Everything else fails with WIZZ-P033: function calls, ternaries, `!`, `!==`, `<`/`>`, `&&`, `||`, indexing (`a[0]`), array methods, template literals, and array/object literals. There are no booleans either: compute them in the script.
 
 ```html
 <script>
@@ -130,8 +131,9 @@ Bind an attribute by making its ENTIRE, UNQUOTED value an expression.
 </div>
 ```
 
-- WRONG: `class="card {state}"` or `href="{url}"`. Quoted values are static: the braces render literally.
-- `value`, `checked`, and `disabled` update as DOM properties; every other name updates as an HTML attribute.
+- WRONG: `class="card {state}"` or `href="{url}"`. Quoted values are static: the braces render literally. Use one expression for the whole value: `class={"card " + state}` or a precomputed `class={cardClass}`.
+- `value`, `checked`, and `disabled` update as DOM properties. Every other name is written with `setAttribute(name, String(value))` and is never removed: `hidden={false}` still hides the element (the attribute is present with the text `"false"`), and `undefined` renders as `"undefined"`. Toggle presence with a bound class and CSS instead. `aria-*` attributes are fine with `"true"`/`"false"` values.
+- There is no `bind:`. `bind:value={name}` silently becomes a plain attribute. Pair `value={name}` with an `on:input` handler (section 8).
 
 ---
 
@@ -248,6 +250,8 @@ log(count = 5);                   // assignment inside an expression
 if (done) status = "ok";          // unbraced body: add braces
 ```
 
+The same rules apply to inline `on:` handlers from compiler 1.17.1: `on:input={(e) => name = e.target.value}` is tracked, while `on:click={() => ok ? a = 1 : 0}` is not (the assignment sits inside an expression). Releases before 1.17.1 did not track assignments written directly in an inline handler; if `wizz --version` reports an older compiler, run `wizz update`.
+
 - Use `const` for locals inside helper functions: the state scanner treats `let` declarations as component state.
 - Reactive names may not be `__proto__` or start with `__wizz` (WIZZ-G017).
 
@@ -280,10 +284,13 @@ onMount(recompute);
 ```html
 <form on:submit={handleSubmit}>
   <input value={query} on:input={handleInput} />
+  <input value={name} on:input={(event) => name = event.target.value} />
   <button type="button" on:click={(event) => add(5)}>+5</button>
 </form>
 ```
 
+- Assignments inside an inline arrow or `function` handler update the DOM like assignments in script functions (compiler 1.17.1 and later). Write each mutation as its own statement.
+- An inline handler that assigns a prop is WIZZ-G015, the same as in the script (1.17.1 and later).
 - Native elements only: never on component tags (WIZZ-G011) or inside `{#each}` bodies (WIZZ-G006).
 - Handlers are client-only. Server rendering skips them; hydration attaches them.
 - Wizz removes every listener it attached on `destroy()`. Listeners you add to `window`/`document` yourself must be removed in `onDestroy`.
@@ -318,6 +325,7 @@ Every `{#each}` must:
 1. Sit directly inside a native element (WIZZ-G002).
 2. Have exactly one native root element per row (WIZZ-G003).
 3. Iterate a top-level `let` to update on reassignment (a `const` renders once).
+4. Name the collection with a bare identifier: `{#each state.items as item}` and an index alias (`item, i`) are WIZZ-P002. Copy into a top-level `let` and store any index you need on the items.
 
 Row bodies may NOT contain:
 
@@ -339,7 +347,7 @@ Keys: `(item.id)` retains and moves nodes by key; duplicate keys throw. Omit the
 {/if}
 ```
 
-The condition uses the same expression grammar (identifier, member access, literal, strict equality). The branch is chosen ONCE AT MOUNT: changing the condition later does not swap an already-rendered branch. For interactive show/hide, bind a class:
+The condition uses the same expression grammar (section 3). The branch is chosen ONCE AT MOUNT: changing the condition later does not swap an already-rendered branch, although expressions inside the taken branch still update. There is no `{:else if}` (WIZZ-P033): nest an `{#if}` inside `{:else}`. For interactive show/hide, bind a class:
 
 ```html
 <script>
@@ -504,14 +512,16 @@ A zero-dependency MCP server over stdio. Register it with `{ "command": "wizz", 
 
 | Tool | Writes? | Purpose |
 | --- | --- | --- |
-| `project_overview` | No | Components, routes, API routes, versions. Start here. |
-| `language_contract` | No | The `.wizz` language contract and diagnostic catalog. |
+| `project_overview` | No | Components, routes, API routes, versions, and the template-limits summary. Start here. |
+| `language_contract` | No | The `.wizz` language contract, diagnostic catalog, and the template-limits table with working patterns. |
 | `component_diagnostics` | No | Compile a file, inline source, or everything into structured records. |
 | `create_or_update_component` | Yes (needs `--allow-write`) | Write a `.wizz` file only if it compiles. |
 | `build_project` | `dist/` only | Run the build, return the JSON envelope. |
 | `dev_workflow` | No | Dev/build/deploy commands and the secrets rule. |
 
 Recommended loop: `project_overview` → `language_contract` → draft and check with `component_diagnostics` (inline `source`) → fix by switching on the diagnostic `code` and line/column → write with `create_or_update_component` → verify with `build_project`.
+
+From compiler 1.17.1 both `project_overview` and `language_contract` return the template-language limits table: one row per area (expressions, `{#if}`, `{#each}` collection and body, dynamic attributes, quoted values, event handlers, component tags) with what is supported, the limit, how it fails (a diagnostic code, or "Silent" when it compiles but does not update), and the working pattern. It is plain text and also `structuredContent.templateLimits`, an array of `{ area, supported, limit, failure, workaround }`. Rows marked Silent are the ones to design around before writing code, because the compiler will not flag them.
 
 ---
 
@@ -549,7 +559,10 @@ Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native e
 | You might write | Wizz.js equivalent |
 | --- | --- |
 | `{items.length}`, `{fmt(x)}`, `{a ? b : c}`, `{a && b}` | Compute `let count = items.length;` in `<script>`, render `{count}` |
-| `class="btn {variant}"` | `let btnClass = "btn " + variant;` then `class={btnClass}` |
+| `class="btn {variant}"` | `class={"btn " + variant}`, or `let btnClass = "btn " + variant;` then `class={btnClass}` |
+| `hidden={!open}`, `disabled`-style boolean attributes other than `disabled`/`checked` | Bind a class and hide with CSS: `hidden={false}` still hides |
+| `bind:value={name}` / `v-model` | `value={name}` plus `on:input={(e) => name = e.target.value}` (1.17.1+) or a named handler |
+| `{:else if b}` | Nest `{#if b}` inside `{:else}` |
 | `<Card><p>Body</p></Card>` / `<slot>` | `<Card body="..." />` or compose native elements around the tag |
 | `<Child on:save={fn} />` / `@save` / `onSave` event emit | Callback prop: `<Child onSave={fn} />`, child calls `onSave(value)` |
 | `{#each}` row with `on:click` or a component | Native row with `data-id`, one delegated listener on the parent |

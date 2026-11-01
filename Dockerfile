@@ -4,7 +4,7 @@
 FROM node:22-alpine AS build
 
 # Pin the CLI so a new Wizz release never changes a deploy silently.
-ARG WIZZ_VERSION=1.17.0
+ARG WIZZ_VERSION=1.17.1
 
 # The installer is a bash script that downloads and checksums the release.
 RUN apk add --no-cache bash curl
