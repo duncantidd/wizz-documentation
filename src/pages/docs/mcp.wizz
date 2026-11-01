@@ -50,7 +50,7 @@
   const overviewOut = `{
   "root": "/mnt/c/Users/dunca/Develop/wizz-documentation",
   "inputDirectory": "src",
-  "versions": { "compiler": "1.17.0", "syntax": "1.4.1", "output": "1.8.2" },
+  "versions": { "compiler": "1.17.1", "syntax": "1.4.2", "output": "1.8.3" },
   "documentShell": true,
   "distPresent": true,
   "adapters": ["node"],
@@ -58,7 +58,16 @@
     { "file": "App.wizz", "route": "/" },
     { "file": "pages/docs/routing.wizz", "route": "/docs/routing" }
   ],
-  "apiRoutes": [{ "routePath": "/api/greet", "filePath": "server/api/greet.js" }]
+  "apiRoutes": [{ "routePath": "/api/greet", "filePath": "server/api/greet.js" }],
+  "templateLimits": [                 // 1.17.1 and later, one row per area
+    {
+      "area": "{#if}",
+      "supported": "{#if cond}...{:else}...{/if}, nesting, ...",
+      "limit": "The branch is chosen once, at mount; ...",
+      "failure": "Silent non-update ({:else if}: WIZZ-P033)",
+      "workaround": "Render every state and toggle visibility with a reactive class plus CSS ..."
+    }
+  ]
 }`;
 
   const diagIn = `// exactly one target:
@@ -135,10 +144,10 @@
           <table>
             <thead><tr><th>Tool</th><th>Writes?</th><th>What it does</th></tr></thead>
             <tbody>
-              <tr><td><a href="#project-overview"><code>project_overview</code></a></td><td>No</td><td>Components and routes, API routes, shell, build output, adapters, version triple</td></tr>
+              <tr><td><a href="#project-overview"><code>project_overview</code></a></td><td>No</td><td>Components and routes, API routes, shell, build output, adapters, version triple, template limits</td></tr>
               <tr><td><a href="#component-diagnostics"><code>component_diagnostics</code></a></td><td>No</td><td>Compile a file, inline source, or everything into structured records</td></tr>
               <tr><td><a href="#build-project"><code>build_project</code></a></td><td>dist/ only</td><td>Run the build and return the JSON envelope</td></tr>
-              <tr><td><a href="#language-contract"><code>language_contract</code></a></td><td>No</td><td>The <code>.wizz</code> language contract and diagnostic catalog</td></tr>
+              <tr><td><a href="#language-contract"><code>language_contract</code></a></td><td>No</td><td>The <code>.wizz</code> language contract, diagnostic catalog, and template-limits table</td></tr>
               <tr><td><a href="#dev-workflow"><code>dev_workflow</code></a></td><td>No</td><td>dev/build/deploy workflow and the secrets rule</td></tr>
               <tr><td><a href="#create-or-update"><code>create_or_update_component</code></a></td><td>Yes, gated</td><td>Write a <code>.wizz</code> file only if it compiles</td></tr>
             </tbody>
@@ -146,7 +155,7 @@
         </div>
 
         <h3 id="project-overview" class="reveal">project_overview</h3>
-        <p>Surveys the application. Start every session here.</p>
+        <p>Surveys the application. Start every session here. From compiler 1.17.1 the result also carries the template-language limits — a one-line-per-area summary in the text and the full rows in <code>templateLimits</code> — so an agent knows them before it writes its first component.</p>
         <div class="grid-2">
           <CodeBlock code={overviewIn} lang="json" title="arguments" />
           <CodeBlock code={overviewOut} lang="json" title="structured result (this site)" />
@@ -168,6 +177,7 @@
 
         <h3 id="language-contract" class="reveal">language_contract</h3>
         <p>Takes no arguments. Returns the component language contract as text — file structure, the reactive script boundary, the expression subset, directives, imports and props, and the stable diagnostic codes — with the version triple as structured data. The text ships inline in the CLI, so it can never drift from the installed compiler.</p>
+        <p>From compiler 1.17.1 it ends with the <strong>template language at a glance</strong> table, also returned as <code>templateLimits</code>. Each row covers one area (expressions, {"{#if}"}, the {"{#each}"} collection and body, dynamic attributes, quoted values, event handlers, component tags) and lists what is supported, the limit, how it fails, and the pattern that works. Rows whose failure is <strong>Silent</strong> compile cleanly but do not update the DOM, so design around them before writing code. The Wizz test suite checks every row against the compiler.</p>
 
         <h3 id="dev-workflow" class="reveal">dev_workflow</h3>
         <p>Takes no arguments. Returns the real commands and defaults for <code>wizz init</code>, <code>dev</code>, <code>build</code>, the node adapter deploy recipe, API routes, the <code>.env.server</code> rule, and the update flow.</p>

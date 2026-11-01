@@ -13,6 +13,23 @@
         "/mnt/c/Users/dunca/Develop/wizz-documentation",
         "--allow-write"
       ]
+    },
+    "svelte": {
+      "type": "http",
+      "url": "https://mcp.svelte.dev/mcp"
+    },
+    "angular-cli": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "-y",
+        "@angular/cli",
+        "mcp"
+      ]
+    },
+    "vue-docs": {
+      "type": "http",
+      "url": "https://mcp.vue-mcp.org/mcp"
     }
   }
 }

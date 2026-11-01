@@ -65,9 +65,10 @@ Consult `.skills/wizz/README.md` and its 4 sub-guides before writing `.wizz` fil
   - `{...}` interpolations only allow:
     1. Identifiers (`{title}`)
     2. Member access chains (`{doc.section.title}`)
-    3. String or number literals (`{"v1.0"}`, `{42}`)
-    4. Strict equality comparisons (`{activeTab === "api"}`)
-  - **FORBIDDEN in `{...}`**: Function calls (`{format(x)}`), ternaries (`{a ? b : c}`), arithmetic (`{a + 1}`), logical operators (`{a && b}`), or array methods (`{list.map(...)}`). **Always precompute derived values in `<script>`**.
+    3. String or integer literals (`{"v1.0"}`, `{42}`)
+    4. Arithmetic `+ - * /` and parentheses (`{count + 1}`, `{"card " + kind}`)
+    5. Strict equality comparisons (`{activeTab === "api"}`)
+  - **FORBIDDEN in `{...}`**: Function calls (`{format(x)}`), ternaries (`{a ? b : c}`), `!`/`!==`/`<`/`>`, logical operators (`{a && b}`), indexing (`{a[0]}`), or array methods (`{list.map(...)}`). **Precompute anything beyond simple arithmetic in `<script>`**.
 - **Component Imports & Composition**:
   - Use default imports only: `import Counter from "./components/Counter.wizz";`
   - Render imported components as **self-closing tags** inside a native DOM parent: `<Counter showReset={true} />`.
@@ -78,7 +79,7 @@ Consult `.skills/wizz/README.md` and its 4 sub-guides before writing `.wizz` fil
   - **Read-Only Props**: Declare props with `export let propName = defaultValue;`. Never mutate an `export let` prop inside the child component.
   - **Cross-Tab Persistent State**: Declare `let theme = persist("wizz_docs_theme", "dark");` at the **top level** of `<script>` for automatic `localStorage` persistence and cross-tab `storage` synchronization.
   - **Lifecycle Hooks**: Call `onMount(() => { ... })` and `onDestroy(() => { ... })` directly in `<script>` **without importing them** (they are compiler globals). Always read browser-only APIs (`window`, `document`, `URLSearchParams(document.location.search)`) inside `onMount` so SSR output matches initial hydration.
-  - **Events**: Bind native events with `on:<event>={namedHandler}` (e.g., `on:click={toggleSidebar}`). Inline arrow functions (`on:click={() => ...}`) are forbidden in templates.
+  - **Events**: Bind native events with `on:<event>={namedHandler}` (e.g., `on:click={toggleSidebar}`). House style for this site: prefer named handlers over inline arrows (`on:click={() => ...}`) so templates stay scannable. This is a style rule, not a compiler limit: from Wizz 1.17.1, assignments inside inline arrows update the DOM.
 - **Control Flow (`{#if}` and `{#each}`)**:
   - **Branching**: `{#if condition} ... {:else} ... {/if}` uses safe expressions (or precomputed booleans).
   - **`{#each}` 4 Strict Constraints**:
@@ -87,7 +88,7 @@ Consult `.skills/wizz/README.md` and its 4 sub-guides before writing `.wizz` fil
     3. Iterated collection must be a top-level reactive `let` variable.
     4. Loop body **MUST NOT** contain imported components, `on:<event>` directives, or nested `{#if}` / `{#each}` blocks.
   - **List Interactions via Event Delegation**: Attach `on:click={handleListClick}` to the parent container outside `{#each}` and resolve the clicked item via `event.target.closest('[data-id]')`.
-  - **List Conditionals via Precomputation**: Precompute active classes/labels inside `<script>` (e.g. `item.activeClass = item.id === currentId ? "is-active" : ""`) and interpolate `class="nav-item {item.activeClass}"` inside `{#each}`.
+  - **List Conditionals via Precomputation**: Precompute active classes/labels inside `<script>` (e.g. `item.activeClass = item.id === currentId ? "is-active" : ""`) and bind it unquoted: `class={"nav-item " + item.activeClass}` inside `{#each}`. A quoted `class="nav-item {item.activeClass}"` renders the braces literally.
 
 ### 3. Routing, Server APIs & Styling Conventions
 - **Pages & Routing**:

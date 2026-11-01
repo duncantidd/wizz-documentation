@@ -21,11 +21,11 @@
   const installCmd = `curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/install-cli.sh | bash`;
 
   const inspectCmd = `# Fetch the installer from a release tag, read it, then run it
-curl -fsSLO https://raw.githubusercontent.com/duncantidd/wizz.js/v1.17.0/scripts/install-cli.sh
+curl -fsSLO https://raw.githubusercontent.com/duncantidd/wizz.js/v1.17.1/scripts/install-cli.sh
 less install-cli.sh
 bash install-cli.sh`;
 
-  const manualCmd = `version=1.17.0
+  const manualCmd = `version=1.17.1
 base=https://github.com/duncantidd/wizz.js/releases/download/v$version
 
 # 1. Download the tarball and the checksum file from the same release
@@ -35,20 +35,20 @@ curl -fsSLO "$base/SHA256SUMS-$version.txt"
 # 2. Check the tarball against the published sha256
 sha256sum -c --ignore-missing "SHA256SUMS-$version.txt"          # Linux
 shasum -a 256 -c --ignore-missing "SHA256SUMS-$version.txt"      # macOS
-# wizz-1.17.0.tgz: OK
+# wizz-1.17.1.tgz: OK
 
 # 3. Install the file you verified, using the install-cli.sh you read above
 bash install-cli.sh "./wizz-$version.tgz"`;
 
   const digestCmd = `# GitHub records its own sha256 for every release asset
-curl -fsSL https://api.github.com/repos/duncantidd/wizz.js/releases/tags/v1.17.0 \\
+curl -fsSL https://api.github.com/repos/duncantidd/wizz.js/releases/tags/v1.17.1 \\
   | grep -E '"(name|digest)"'`;
 
   const pathCmd =`# Bash / Zsh — add to your shell profile, then open a new shell
 export PATH="$HOME/.local/bin:$PATH"
 
 wizz --version
-# wizz 1.17.0 (compiler 1.17.0, syntax 1.4.1, output 1.8.2)`;
+# wizz 1.17.1 (compiler 1.17.1, syntax 1.4.2, output 1.8.3)`;
 
   const scaffoldCmd = `wizz init my-app
 cd my-app

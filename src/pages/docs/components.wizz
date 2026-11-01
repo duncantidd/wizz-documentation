@@ -63,7 +63,8 @@
 <section>
   <h2>{greeting}</h2>                 <!-- identifier -->
   <p>{user.name}</p>                  <!-- member access -->
-  <p>{"v1.0"} · {42}</p>               <!-- string / number literals -->
+  <p>{"v1.0"} · {42}</p>               <!-- string / integer literals -->
+  <p>{itemCount + 1} after the next</p> <!-- arithmetic: + - * / ( ) -->
   {#if user.role === "admin"}         <!-- strict equality -->
     <p>{itemCount} items</p>
   {/if}
@@ -221,14 +222,15 @@ handle.destroy();                     // call exactly once`;
         </ul>
 
         <h2 id="expressions" class="reveal">Template expressions</h2>
-        <p>Curly braces accept a deliberately small, statically analyzable grammar: <strong>identifiers</strong>, <strong>member access</strong>, <strong>string and number literals</strong>, and <strong>strict equality</strong>. Function calls and ternaries fail with <code>WIZZ-P033</code>. Treat anything outside that subset as unsupported even when it happens to parse — compute it in the script and reference the result by name.</p>
+        <p>Curly braces accept a deliberately small, statically analyzable grammar: <strong>identifiers</strong>, <strong>member access</strong>, <strong>string and integer literals</strong>, <strong>arithmetic</strong> (<code>+ - * /</code> and parentheses, with <code>+</code> also joining strings), and <strong>strict equality</strong>. Everything else fails with <code>WIZZ-P033</code>: function calls, ternaries, <code>!</code>, <code>!==</code>, <code>{"<"}</code>/<code>{">"}</code>, <code>{"&&"}</code>/<code>||</code>, indexing, template literals, decimals, and array or object literals. Compute those in the script and reference the result by name.</p>
         <CodeBlock code={expressionsSource} lang="wizz" title="Expressions.wizz" />
         <p>Text output escapes <code>&</code>, <code>{"<"}</code>, and <code>{">"}</code>; attribute values additionally escape <code>"</code>. To show a literal angle bracket in prose, interpolate a string literal such as <code>{'{"<script>"}'}</code> — HTML entities are not decoded in templates.</p>
 
         <h2 id="attributes" class="reveal">Dynamic attributes</h2>
-        <p>Bind an attribute by making its <strong>entire, unquoted value</strong> an expression: <code>{"class={cardClass}"}</code>. <code>value</code>, <code>checked</code>, and <code>disabled</code> update as DOM properties; every other name updates as an HTML attribute.</p>
+        <p>Bind an attribute by making its <strong>entire, unquoted value</strong> an expression: <code>{"class={cardClass}"}</code> or <code>{"class={'card ' + state}"}</code>. <code>value</code>, <code>checked</code>, and <code>disabled</code> update as DOM properties. Every other name is written as <code>setAttribute(name, String(value))</code> and is never removed, so <code>{"hidden={false}"}</code> still hides the element and <code>undefined</code> renders as the text <code>"undefined"</code>. Toggle presence with a bound class and CSS.</p>
         <CodeBlock code={attributesSource} lang="wizz" title="Attributes.wizz" />
-        <Callout kind="warn" title="Quoted values are static" body={'In the current compiler, class="card {state}" or href="{url}" render those characters literally. Precompute the full string in the script and bind it unquoted: class={cardClass}.'} />
+        <Callout kind="warn" title="Quoted values are static" body={'In the current compiler, class="card {state}" or href="{url}" render those characters literally. Bind the whole value unquoted: class={cardClass} or class={"card " + state}.'} />
+        <Callout kind="note" title="There is no bind:" body={'bind:value={name} is not a directive: it compiles to a plain attribute named bind:value. Pair value={name} with an on:input handler instead.'} />
 
         <h2 id="props" class="reveal">Props</h2>
         <p>A child declares inputs with <code>export let</code>. The parent passes them as attributes on the component tag: static attributes pass strings, bare attributes pass <code>true</code>, and <code>{"{expressions}"}</code> pass values that re-evaluate whenever their dependencies change.</p>
@@ -295,6 +297,8 @@ handle.destroy();                     // call exactly once`;
               <tr><td>Component tags inside a native element</td><td>Wrap the tag</td><td><code>WIZZ-G010</code></td></tr>
               <tr><td>Props are read-only</td><td>Copy into a local <code>let</code></td><td><code>WIZZ-G015</code></td></tr>
               <tr><td>No calls or ternaries in <code>{"{...}"}</code></td><td>Compute in the script</td><td><code>WIZZ-P033</code></td></tr>
+              <tr><td>No <code>{"{:else if}"}</code></td><td>Nest <code>{"{#if}"}</code> inside <code>{"{:else}"}</code></td><td><code>WIZZ-P033</code></td></tr>
+              <tr><td>{"{#each}"} names a bare collection, no index alias</td><td>Copy into a top-level <code>let</code>; store indexes on items</td><td><code>WIZZ-P002</code></td></tr>
               <tr><td>{"{#each}"} inside a native element</td><td>Wrap the block</td><td><code>WIZZ-G002</code></td></tr>
               <tr><td>One root element per {"{#each}"} body</td><td>Wrap the row</td><td><code>WIZZ-G003</code></td></tr>
               <tr><td>No components / <code>on:</code> inside {"{#each}"}</td><td>Native markup + delegation</td><td><code>WIZZ-G004</code> / <code>G006</code></td></tr>
@@ -304,6 +308,8 @@ handle.destroy();                     // call exactly once`;
         <p>A few behaviors compile cleanly but are worth knowing:</p>
         <ul>
           <li><strong>{"{#if}"} is chosen at mount.</strong> Toggle visibility of reactive UI with a bound class instead, and keep dynamic bindings out of branches that may not be taken.</li>
+          <li><strong>Dynamic boolean attributes are never removed.</strong> <code>{"hidden={false}"}</code> still hides; only <code>value</code>, <code>checked</code>, and <code>disabled</code> are DOM properties.</li>
+          <li><strong>In-place mutation does not update.</strong> <code>items.push(x)</code> changes the array but not the DOM; reassign with <code>{"items = [...items, x]"}</code>.</li>
           <li><strong>Avoid empty-string text interpolations</strong> in server-rendered components: an empty text node does not survive HTML parsing, so hydration falls back to a client render. Initialize display strings to something visible.</li>
           <li><strong>Keep scripts LF-only.</strong> The hydration walk compares template whitespace exactly, and the browser normalizes CRLF.</li>
           <li><strong>Use <code>const</code> for locals inside helper functions.</strong> The state scanner treats <code>let</code> declarations as component state.</li>
