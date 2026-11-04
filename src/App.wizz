@@ -35,7 +35,7 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
       id: "styles",
       icon: "icon icon-hash",
       title: "Scoped styles, extracted",
-      body: "<wizz:style> is scoped by a data-wizz-s attribute and extracted into app.css at build time — first paint arrives styled."
+      body: "<wizz:style> is scoped by a data-wizz-s attribute and extracted into wizz.css at build time — first paint arrives styled."
     },
     {
       id: "agents",

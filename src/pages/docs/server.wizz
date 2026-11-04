@@ -183,6 +183,8 @@ Serving the client build only.`;
         <p>Pages server-render by default. <code>wizz dev</code> and the node host match each document request against the manifest, call the page's <code>renderComponent()</code>, put the HTML inside <code>#app</code>, place the state script beside it, and inject the head between <code>wizz:head-start</code> / <code>wizz:head-end</code> comment markers. The router then hydrates instead of re-rendering.</p>
         <Callout kind="warn" title="Browser globals belong in onMount" body="Author scripts run on the server too. A top-level read of document, window, or localStorage throws during renderComponent(), and that route falls back to the client build." />
 
+        <p>Built modules carry no CSS when the shell links <code>/wizz.css</code>, which <code>wizz build</code> arranges for you. If you serve them from your own HTML instead of the built shell, link <code>/wizz.css</code> from that document, or pages arrive unstyled.</p>
+
         <h3 id="eligibility" class="reveal">What can server-render</h3>
         <p>Everything with a deterministic first render: static markup, text and attribute expressions, props, the initially-taken {"{#if}"} branch, {"{#each}"} lists, and imported components — recursively. Eligibility is computed bottom-up over the import graph; a page whose child fails the gate stays client-only, and the build explains why:</p>
         <CodeBlock code={noteText} lang="text" title="build output" />

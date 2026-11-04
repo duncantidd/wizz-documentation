@@ -2,7 +2,7 @@
 
 > Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
 
-Versions covered: compiler 1.17.1, syntax 1.4.2, output 1.8.3 (`wizz --version`).
+Versions covered: compiler 1.18.0, syntax 1.4.2, output 1.9.0 (`wizz --version`).
 Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
 
 Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
@@ -415,7 +415,7 @@ onMount(() => {
 
 ## 12. Styles and head
 
-`<wizz:style>`: raw CSS, scoped by a generated `data-wizz-s` attribute on each selector's terminal element. `@keyframes` names gain the scope suffix. No expressions inside CSS (WIZZ-P017). Extracted into `dist/app.css` at build time. Put global tokens and resets in `App.css`.
+`<wizz:style>`: raw CSS, scoped by a generated `data-wizz-s` attribute on each selector's terminal element. `@keyframes` names gain the scope suffix. No expressions inside CSS (WIZZ-P017). Extracted into `dist/wizz.css` at build time, and linked from the built shell; built modules then carry no CSS of their own. Put global tokens and resets in `App.css`.
 
 `<wizz:head>`: only `<title>`, `<meta>`, `<link>`. Expressions evaluate at render time; the head follows navigation, not state (no reactive head updates). With several titles mounted, the last in tree order wins. Keep `index.html` free of its own `<title>`.
 
@@ -486,6 +486,8 @@ Pages server-render by default. The server calls the page's `renderComponent()`,
 
 Server-renderable: static markup, text and attribute expressions, props, the initially taken `{#if}` branch, `{#each}`, and imported components (recursively, if each child is renderable). Event handlers and lifecycle hooks are client-only. Author scripts run on the server, so reading browser globals at the top level of a script breaks SSR: use `onMount`.
 
+Built modules carry no CSS when the shell links `/wizz.css`, which `wizz build` arranges. An application that serves them from its own HTML instead of the built shell must link `/wizz.css` from that document, or pages arrive unstyled.
+
 ---
 
 ## 16. CLI
@@ -500,7 +502,7 @@ wizz install-vscode-extension
 wizz --version
 ```
 
-- `wizz build` compiles every file (continuing past failures), writes route/API manifests, copies the runtime, `index.html`, `App.css`, and `src/server/`, and extracts styles to `dist/app.css`. Non-zero exit on any failure.
+- `wizz build` compiles every file (continuing past failures), writes route/API manifests, copies the runtime, `index.html`, `App.css`, and `src/server/`, and extracts styles to `dist/wizz.css`. Non-zero exit on any failure.
 - `wizz build --json` prints a `wizz-build-diagnostics@1` envelope: `{ format, ok, diagnostics: [{ code, severity, message, file, line, column }], files: [{ file, serverRenderable }] }`.
 - `wizz build --adapter node` adds `dist/server.mjs`, a standalone SSR + API host (`node dist/server.mjs`, default port 8080, `PORT` env).
 

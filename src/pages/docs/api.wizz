@@ -204,6 +204,7 @@ const body = '<div id="app">' + html + "</div>" + serializeInitialState(state);
     { name: "source", type: "string", desc: "The .wizz component source." },
     { name: "options.filePath", type: "string?", desc: "Qualifies errors with the path and adds a caret code frame. Always pass it for files." },
     { name: "options.hydratable", type: "boolean?", desc: "Restrict to the server-renderable surface and also export hydrateComponent / hydrateRoot." },
+    { name: "options.extractedStyles", type: "boolean?", desc: "The document links the scoped CSS from a stylesheet, so the module carries none and injects no style tag. Scope attributes stay in the markup. Use the same value for every module on a page." },
     { name: "options.diagnostics", type: "'collect'?", desc: "Return { diagnostics: [...] } records instead of throwing." }
   ];
   const compileExample = `const { compile } = require("./src/compiler");
@@ -225,6 +226,7 @@ result.diagnostics[0].code;   // "WIZZ-P022"`;
   const compileServerParams = [
     { name: "source", type: "string", desc: "The .wizz component source." },
     { name: "options.filePath", type: "string?", desc: "As for compile()." },
+    { name: "options.extractedStyles", type: "boolean?", desc: "As for compile()." },
     { name: "options.diagnostics", type: "'collect'?", desc: "As for compile()." },
     { name: "options.componentServerRenderable", type: "Record<string, true>", desc: "Import names whose own server builds compile; a missing entry rejects that tag." },
     { name: "options.componentIneligibilityReasons", type: "Record<string, string>", desc: "Child failure reasons, chained into the diagnostic as 'Underlying reason: …'." }
@@ -239,7 +241,7 @@ const { source, sourceMap } = compileServer(componentSource, {
   const versionsExample = `const { VERSIONS } = require("./src/compiler");
 
 VERSIONS;
-// { compiler: "1.17.1", syntax: "1.4.2", output: "1.8.3" }  (frozen)`;
+// { compiler: "1.18.0", syntax: "1.4.2", output: "1.9.0" }  (frozen)`;
 
   const noParams = [];
 
@@ -335,7 +337,7 @@ export default async function handler(request) {
     <main id="main" class="doc-main glass" on:pointermove={trackSheen}>
       <article class="prose">
         <header>
-          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.17.1 · syntax 1.4.2 · output 1.8.3</p>
+          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.18.0 · syntax 1.4.2 · output 1.9.0</p>
           <h1 class="rise" style="--i: 1">API Reference</h1>
           <p class="lead rise" style="--i: 2">The complete public surface: what a component script can call, what a template can express, what every compiled module exports, and the compiler, router, and server entry points behind them.</p>
         </header>
@@ -353,7 +355,7 @@ export default async function handler(request) {
         <ApiEntry anchor="if-block" name="{#if} … {:else} … {/if}" kind="block" origin="template" signature="{#if condition} … {:else} … {/if}" summary="Chooses a branch at mount time. Changing the condition later does not swap an already-rendered branch, so drive interactive show/hide with a bound class." params={ifParams} returns="" example={ifExample} exampleTitle="branch" />
         <ApiEntry anchor="each-block" name="{#each} … {/each}" kind="block" origin="template" signature="{#each items as item (key)} <row /> {/each}" summary="Renders one native root element per item, inside a native parent. Bodies may not contain components, on: directives, or nested blocks." params={eachParams} returns="" example={eachExample} exampleTitle="list" />
         <ApiEntry anchor="wizz-head" name="<wizz:head>" kind="block" origin="component root" signature="<wizz:head> <title/> <meta/> <link/> </wizz:head>" summary="Per-component document metadata. Server-rendered into the head and adopted on hydration; client mounts prepend tagged nodes and destroy() releases them. Multiple titles resolve last-in-tree-wins." params={headParams} returns="" example={headExample} exampleTitle="head" />
-        <ApiEntry anchor="wizz-style" name="<wizz:style>" kind="block" origin="component root" signature="<wizz:style> /* raw CSS */ </wizz:style>" summary="Component-scoped CSS. Delivered once per document in dev, adopted on hydration, refcounted on client mounts, and extracted to dist/app.css by wizz build. Expressions are never interpolated into CSS." params={styleParams} returns="" example={styleExample} exampleTitle="styles" />
+        <ApiEntry anchor="wizz-style" name="<wizz:style>" kind="block" origin="component root" signature="<wizz:style> /* raw CSS */ </wizz:style>" summary="Component-scoped CSS. Delivered once per document in dev, adopted on hydration, refcounted on client mounts, and extracted to dist/wizz.css by wizz build, whose modules then carry no CSS. Expressions are never interpolated into CSS." params={styleParams} returns="" example={styleExample} exampleTitle="styles" />
 
         <h2 id="modules" class="reveal">Generated modules</h2>
         <p>Each component compiles to <code>Name.js</code>; server-renderable components also get <code>Name.server.js</code> and <code>Name.hydrate.js</code>. These surfaces are covered by the <strong>output</strong> version.</p>
@@ -365,7 +367,7 @@ export default async function handler(request) {
 
         <h2 id="compiler" class="reveal">Compiler API</h2>
         <p>Exported from <code>src/compiler</code> (CommonJS). Most applications never call it directly — <code>wizz build</code> and <code>wizz dev</code> do.</p>
-        <ApiEntry anchor="compile" name="compile()" kind="function" origin="src/compiler" signature="compile(source: string, options?: { filePath?, hydratable?, diagnostics? }): { source, payload, sourceMap, version, diagnostics? }" summary="Compiles a component to a mountable ES module. Errors are SyntaxErrors carrying a stable code, line, column, and (with filePath) a caret code frame." params={compileParams} returns="source (module text), payload (analyzed AST), sourceMap (v3 or null), version (frozen triple)." example={compileExample} exampleLang="js" exampleTitle="build tooling" />
+        <ApiEntry anchor="compile" name="compile()" kind="function" origin="src/compiler" signature="compile(source: string, options?: { filePath?, hydratable?, extractedStyles?, diagnostics? }): { source, payload, sourceMap, version, diagnostics? }" summary="Compiles a component to a mountable ES module. Errors are SyntaxErrors carrying a stable code, line, column, and (with filePath) a caret code frame." params={compileParams} returns="source (module text), payload (analyzed AST), sourceMap (v3 or null), version (frozen triple)." example={compileExample} exampleLang="js" exampleTitle="build tooling" />
         <ApiEntry anchor="compile-server" name="compileServer()" kind="function" origin="src/compiler" signature="compileServer(source: string, options?: object): { source, payload, sourceMap: null, version }" summary="Shares the parse → analyze → assign pipeline and emits a DOM-free server module. Component tags render through each child's own server module, gated by the eligibility options." params={compileServerParams} returns="The same shape as compile(), with sourceMap always null." example={compileServerExample} exampleLang="js" exampleTitle="server target" />
         <ApiEntry anchor="versions" name="VERSIONS" kind="constant" origin="src/compiler" signature="VERSIONS: Readonly<{ compiler: string; syntax: string; output: string }>" summary="The frozen compatibility triple, also stamped on the first line of every generated module and printed by wizz --version." params={noParams} returns="" example={versionsExample} exampleLang="js" exampleTitle="versions" />
 

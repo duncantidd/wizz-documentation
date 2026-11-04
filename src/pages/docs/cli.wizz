@@ -37,7 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/ins
 # From a clone of the repository
 ./scripts/install-cli.sh            # latest release
 ./scripts/install-cli.sh --local    # the working tree (developing Wizz itself)
-./scripts/install-cli.sh ./wizz-1.17.1.tgz   # a specific tarball (path or URL)`;
+./scripts/install-cli.sh ./wizz-1.18.0.tgz   # a specific tarball (path or URL)`;
 
   const uninstallCmd = `rm -f "\${XDG_BIN_HOME:-$HOME/.local/bin}/wizz"
 rm -rf "\${XDG_DATA_HOME:-$HOME/.local/share}/wizz"`;
@@ -95,7 +95,7 @@ wizz mcp --root /path/to/project --allow-write   # enable compile-gated writes`;
 # without the CLI
 code --install-extension wizz-vscode-<version>.vsix`;
   const versionCmd = `wizz --version
-# wizz 1.17.1 (compiler 1.17.1, syntax 1.4.2, output 1.8.3)`;
+# wizz 1.18.0 (compiler 1.18.0, syntax 1.4.2, output 1.9.0)`;
 </script>
 
 <wizz:head>
@@ -152,7 +152,7 @@ code --install-extension wizz-vscode-<version>.vsix`;
         </ul>
 
         <h2 id="build" class="reveal">wizz build</h2>
-        <p>Compiles every <code>.wizz</code> file (continuing past failures so you see them all), writes the route and API manifests, copies the runtime, the shell, <code>App.css</code>, and <code>src/server/</code>, extracts scoped CSS into <code>dist/app.css</code>, and writes <code>dist/package.json</code> as <code>{'{"type":"module"}'}</code>. Exits non-zero if any component fails.</p>
+        <p>Compiles every <code>.wizz</code> file (continuing past failures so you see them all), writes the route and API manifests, copies the runtime, the shell, <code>App.css</code>, and <code>src/server/</code>, extracts scoped CSS into <code>dist/wizz.css</code>, and writes <code>dist/package.json</code> as <code>{'{"type":"module"}'}</code>. Exits non-zero if any component fails.</p>
         <CodeBlock code={buildCmd} lang="bash" title="terminal" />
 
         <h3 id="json" class="reveal">--json diagnostics</h3>
