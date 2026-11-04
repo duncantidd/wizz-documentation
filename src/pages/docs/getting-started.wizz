@@ -21,11 +21,11 @@
   const installCmd = `curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/install-cli.sh | bash`;
 
   const inspectCmd = `# Fetch the installer from a release tag, read it, then run it
-curl -fsSLO https://raw.githubusercontent.com/duncantidd/wizz.js/v1.17.1/scripts/install-cli.sh
+curl -fsSLO https://raw.githubusercontent.com/duncantidd/wizz.js/v1.18.0/scripts/install-cli.sh
 less install-cli.sh
 bash install-cli.sh`;
 
-  const manualCmd = `version=1.17.1
+  const manualCmd = `version=1.18.0
 base=https://github.com/duncantidd/wizz.js/releases/download/v$version
 
 # 1. Download the tarball and the checksum file from the same release
@@ -35,20 +35,20 @@ curl -fsSLO "$base/SHA256SUMS-$version.txt"
 # 2. Check the tarball against the published sha256
 sha256sum -c --ignore-missing "SHA256SUMS-$version.txt"          # Linux
 shasum -a 256 -c --ignore-missing "SHA256SUMS-$version.txt"      # macOS
-# wizz-1.17.1.tgz: OK
+# wizz-1.18.0.tgz: OK
 
 # 3. Install the file you verified, using the install-cli.sh you read above
 bash install-cli.sh "./wizz-$version.tgz"`;
 
   const digestCmd = `# GitHub records its own sha256 for every release asset
-curl -fsSL https://api.github.com/repos/duncantidd/wizz.js/releases/tags/v1.17.1 \\
+curl -fsSL https://api.github.com/repos/duncantidd/wizz.js/releases/tags/v1.18.0 \\
   | grep -E '"(name|digest)"'`;
 
   const pathCmd =`# Bash / Zsh — add to your shell profile, then open a new shell
 export PATH="$HOME/.local/bin:$PATH"
 
 wizz --version
-# wizz 1.17.1 (compiler 1.17.1, syntax 1.4.2, output 1.8.3)`;
+# wizz 1.18.0 (compiler 1.18.0, syntax 1.4.2, output 1.9.0)`;
 
   const scaffoldCmd = `wizz init my-app
 cd my-app
@@ -174,7 +174,7 @@ PORT=3000 node dist/server.mjs`;
         <CodeBlock code={treeText} lang="text" title="my-app" />
         <div class="grid-2">
           <div class="mini-card"><h3>You edit</h3><p><code>index.html</code>, <code>App.css</code>, <code>src/**/*.wizz</code>, and <code>src/server/api/*.js</code>.</p></div>
-          <div class="mini-card"><h3>Wizz generates</h3><p><code>dist/</code> — compiled modules, a copy of the runtime, the route manifest, and extracted <code>app.css</code>. Treat it as disposable.</p></div>
+          <div class="mini-card"><h3>Wizz generates</h3><p><code>dist/</code> — compiled modules, a copy of the runtime, the route manifest, and extracted <code>wizz.css</code>. Treat it as disposable.</p></div>
         </div>
         <p>The document shell only owns the mount point and the runtime entry. The router finds <code>#app</code>, loads the module for the current path, and mounts — or hydrates — it.</p>
         <CodeBlock code={shellHtml} lang="wizz" title="index.html" />
@@ -197,7 +197,7 @@ PORT=3000 node dist/server.mjs`;
         <Callout kind="warn" title="WSL2 + /mnt/c: assets that never finish loading" body="Some Node 18 builds use libuv's io_uring backend, which can loop forever when streaming files from a Windows drive mounted in WSL2 — pages hang or the tab crashes. Start the server with UV_USE_IO_URING=0 wizz dev, or keep the project inside the Linux filesystem." />
 
         <h2 id="build" class="reveal">Production build</h2>
-        <p><code>wizz build</code> compiles every <code>.wizz</code> file, writes the route manifest, copies the runtime, and extracts all scoped styles into <code>dist/app.css</code>. Add <code>--adapter node</code> to also emit a standalone SSR + API host.</p>
+        <p><code>wizz build</code> compiles every <code>.wizz</code> file, writes the route manifest, copies the runtime, and extracts all scoped styles into <code>dist/wizz.css</code>. Add <code>--adapter node</code> to also emit a standalone SSR + API host.</p>
         <CodeBlock code={buildCmd} lang="bash" title="terminal" />
         <p>The <code>dist/</code> directory is self-contained: the node host imports only Node built-ins and the build's own artifacts. See <a href="/docs/server#deploy">Deploying with the node adapter</a> for the full contract.</p>
 
