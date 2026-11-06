@@ -307,12 +307,14 @@ handle.destroy();                     // call exactly once`;
         </div>
         <p>A few behaviors compile cleanly but are worth knowing:</p>
         <ul>
-          <li><strong>{"{#if}"} is chosen at mount.</strong> Toggle visibility of reactive UI with a bound class instead, and keep dynamic bindings out of branches that may not be taken.</li>
+          <li><strong>{"{#if}"} is chosen at mount.</strong> Toggle visibility of reactive UI with a bound class instead: bindings in the untaken branch are skipped, and that branch never appears later.</li>
           <li><strong>Dynamic boolean attributes are never removed.</strong> <code>{"hidden={false}"}</code> still hides; only <code>value</code>, <code>checked</code>, and <code>disabled</code> are DOM properties.</li>
           <li><strong>In-place mutation does not update.</strong> <code>items.push(x)</code> changes the array but not the DOM; reassign with <code>{"items = [...items, x]"}</code>.</li>
           <li><strong>Avoid empty-string text interpolations</strong> in server-rendered components: an empty text node does not survive HTML parsing, so hydration falls back to a client render. Initialize display strings to something visible.</li>
           <li><strong>Keep scripts LF-only.</strong> The hydration walk compares template whitespace exactly, and the browser normalizes CRLF.</li>
           <li><strong>Use <code>const</code> for locals inside helper functions.</strong> The state scanner treats <code>let</code> declarations as component state.</li>
+          <li><strong>Most top-level names are yours.</strong> Ordinary names such as <code>target</code>, <code>state</code>, and <code>value</code> are free. A top-level declaration, prop, or import may not use the <code>__wizz</code> prefix, <code>onMount</code>, <code>onDestroy</code>, or a global generated code reads: <code>document</code>, <code>console</code>, <code>queueMicrotask</code>, <code>Array</code>, <code>Error</code>, <code>JSON</code>, <code>Map</code>, <code>Object</code>, <code>Set</code>, or <code>String</code> (<code>WIZZ-G025</code>). Inside a function or block any name is allowed.</li>
+          <li><strong>Generated code is private.</strong> A script cannot read <code>target</code>, <code>props</code>, or other generated names, so pass what it needs as a prop. Before 1.20.0, top-level names such as these could break the module or render a wrong value; run <code>wizz update</code> if you are on an older compiler.</li>
         </ul>
       </article>
       <PageNav prevHref="/docs/architecture" prevLabel="Architecture & Philosophy" nextHref="/docs/reactivity" nextLabel="State & Reactivity" />
