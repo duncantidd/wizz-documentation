@@ -1,6 +1,6 @@
 # Wizz.js
 
-> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.18.1, syntax 1.4.2, output 1.9.1.
+> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.20.0, syntax 1.4.3, output 1.10.1.
 
 Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail to compile. Before writing a `.wizz` file, read [the full reference](/llms-full.txt). The rules that trip agents up most:
 
@@ -14,6 +14,7 @@ Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail
 - Assignments in inline `on:` handlers update the DOM (`on:input={(e) => name = e.target.value}`). Releases before 1.17.1 did not track them; upgrade with `wizz update`.
 - The Wizz MCP server's `project_overview` and `language_contract` tools return these limits as a table with working patterns (1.17.1+).
 - `onMount`, `onDestroy`, and `persist` are compiler globals: call them without importing. Read `window`/`document` only inside `onMount`.
+- Ordinary top-level names such as `target`, `props`, `state`, and `value` are free. `__wizz`-prefixed names, `onMount`, `onDestroy`, and the globals generated code reads (`document`, `console`, `queueMicrotask`, `Array`, `Error`, `JSON`, `Map`, `Object`, `Set`, `String`) are reserved at the top level (WIZZ-G025). Scripts cannot read generated names.
 
 ## Getting started
 

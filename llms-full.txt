@@ -2,7 +2,7 @@
 
 > Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
 
-Versions covered: compiler 1.18.1, syntax 1.4.2, output 1.9.1 (`wizz --version`).
+Versions covered: compiler 1.20.0, syntax 1.4.3, output 1.10.1 (`wizz --version`).
 Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
 
 Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
@@ -171,7 +171,7 @@ The child declares props with `export let`; the parent passes them as attributes
 - Static attributes pass strings, bare attributes pass `true`, `{expressions}` pass values that update when their dependencies change.
 - New values arrive through `setProps()`; the child re-renders in place and keeps its DOM and internal state.
 - Props are read-only in the child: assigning one is WIZZ-G015. Copy into a local `let` if you need to change it.
-- One prop per `export let` (WIZZ-P038). Prop names may not start with `__wizz`.
+- One prop per `export let` (WIZZ-P038). Prop names may not start with `__wizz` or use a name reserved in section 7 (WIZZ-G025).
 - Omitted prop or explicit `undefined` → default. Undeclared attributes are ignored.
 
 ---
@@ -254,6 +254,8 @@ The same rules apply to inline `on:` handlers from compiler 1.17.1: `on:input={(
 
 - Use `const` for locals inside helper functions: the state scanner treats `let` declarations as component state.
 - Reactive names may not be `__proto__` or start with `__wizz` (WIZZ-G017).
+- Ordinary names are free at the top level of a script, including `target`, `props`, `state`, `update`, and `value`. Reserved there, and as prop or import names (WIZZ-G025): `__wizz`-prefixed names, `onMount`, `onDestroy`, `document`, `console`, `queueMicrotask`, `Array`, `Error`, `JSON`, `Map`, `Object`, `Set`, and `String`. Inside a function or block any name is allowed.
+- Generated code is private: a script cannot read `target`, `props`, or any other generated name, so pass what it needs as a prop. Before 1.20.0, top-level names such as `target` and `state` could break the module or render a wrong value; if `wizz --version` reports an older compiler, run `wizz update`.
 
 Derived values: Wizz has no computed syntax. Keep one function that recomputes derived state, call it after relevant changes and once in `onMount`.
 
@@ -552,7 +554,7 @@ Most common:
 
 Parse stage (WIZZ-P): P001 tokenizer error · P002 malformed `{#each}` · P003 unexpected `{/each}` · P004 unexpected `{/if}` · P005 unexpected `{:else}` · P006 disallowed child in `<title>` · P007 disallowed element in `<wizz:head>` · P008 element in `<wizz:style>` · P009 attributes on `<wizz:head>` · P010 nested `<wizz:head>` · P011 attributes on `<wizz:style>` · P012 nested `<wizz:style>` · P013 duplicate `<wizz:head>` · P014 duplicate `<wizz:style>` · P015 block directive in `<wizz:head>` · P016 expression directly in `<wizz:head>` · P017 expression in `<wizz:style>` · P018 mismatched closing tag · P019 only title/meta/link in head · P020 plain `<style>` · P021 closing tag on void element · P022 unclosed tag · P023 unexpected closing tag · P024 unsupported token · P025 unclosed string in expression · P026 unexpected character in expression · P027 unparseable expression start · P028 expected `)` · P029 expected property after `.` · P030 unexpected expression token · P031 missing `{#if}` condition · P032 dynamic attribute missing expression · P033 template expression error · P034 invalid prop name · P035 reserved prop prefix `__wizz` · P036 `export let` without a name · P037 `export` not at top level · P038 one prop per `export let` · P039 invalid prop declaration · P040 duplicate prop · P041 prop missing value · P042 prop missing semicolon · P043 unsupported export syntax · P044 `persist()` on a prop · P045 `persist()` on a const · P046 `persist()` not top level · P047 statements trailing a `persist()` declaration · P048 `persist()` missing arguments · P049 `persist()` extra arguments · P050 `persist()` key not a string literal · P051 nested `persist()` · P052 unparseable `persist()` call · P053 expression depth budget exceeded · P054 template depth budget exceeded.
 
-Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native element · G003 `{#each}` body needs one root · G004 component in `{#each}` · G005 unsupported node in `{#each}` (nested blocks) · G006 `on:` in `{#each}` · G007 invalid prop attribute name · G008 children on component tag · G009 component missing id (internal) · G010 component tag outside native element · G011 `on:` on component tag · G012 event directive missing handler · G013 invalid event directive · G014 disallowed child in `<title>` · G015 assignment to a prop · G016 imports must be on their own lines · G017 reserved reactive name · G018 server build: unsupported node · G019 server build: unsupported head node · G020 server build: component not server-renderable · G021 void element with children · G022 hydration: unsupported node · G023 hydration: unsupported node in `{#each}` · G024 `persist()` rewrite drift (internal).
+Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native element · G003 `{#each}` body needs one root · G004 component in `{#each}` · G005 unsupported node in `{#each}` (nested blocks) · G006 `on:` in `{#each}` · G007 invalid prop attribute name · G008 children on component tag · G009 component missing id (internal) · G010 component tag outside native element · G011 `on:` on component tag · G012 event directive missing handler · G013 invalid event directive · G014 disallowed child in `<title>` · G015 assignment to a prop · G016 imports must be on their own lines · G017 reserved reactive name · G018 server build: unsupported node · G019 server build: unsupported head node · G020 server build: component not server-renderable · G021 void element with children · G022 hydration: unsupported node · G023 hydration: unsupported node in `{#each}` · G024 `persist()` rewrite drift (internal) · G025 reserved top-level, prop, or import name.
 
 ---
 

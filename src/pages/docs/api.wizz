@@ -86,7 +86,7 @@
 <button on:click={toggle}>Theme: {theme}</button>`;
 
   const exportLetParams = [
-    { name: "name", type: "identifier", desc: "The prop name. One prop per declaration; may not start with the reserved __wizz prefix." },
+    { name: "name", type: "identifier", desc: "The prop name. One prop per declaration; may not start with the reserved __wizz prefix or use a reserved top-level name (WIZZ-G025)." },
     { name: "default", type: "expression?", desc: "Optional default, used when the parent omits the prop or passes undefined." }
   ];
   const exportLetExample = `<script>
@@ -146,8 +146,9 @@
   /* ---------------- Generated modules ---------------- */
 
   const mountParams = [
-    { name: "target", type: "Node", desc: "A live DOM node; the component's root is appended to it." },
-    { name: "props", type: "object = {}", desc: "Initial values for declared props." }
+    { name: "target", type: "Node", desc: "A live DOM node; the component's root is attached to it." },
+    { name: "props", type: "object = {}", desc: "Initial values for declared props." },
+    { name: "anchor", type: "Node | null = null", desc: "A child of target. The root is inserted before it; when omitted, the root is appended." }
   ];
   const mountExample = `import mountComponent from "/components/Counter.js";
 
@@ -241,7 +242,7 @@ const { source, sourceMap } = compileServer(componentSource, {
   const versionsExample = `const { VERSIONS } = require("./src/compiler");
 
 VERSIONS;
-// { compiler: "1.18.1", syntax: "1.4.2", output: "1.9.1" }  (frozen)`;
+// { compiler: "1.20.0", syntax: "1.4.3", output: "1.10.1" }  (frozen)`;
 
   const noParams = [];
 
@@ -313,7 +314,8 @@ export default async function handler(request) {
     ["G017", "Reserved reactive state name (__proto__, __wizz…)"], ["G018", "Server build: unsupported node"],
     ["G019", "Server build: unsupported head node"], ["G020", "Server build: component not server-renderable"],
     ["G021", "Void element with children"], ["G022", "Hydration: unsupported node"],
-    ["G023", "Hydration: unsupported node in {#each}"], ["G024", "persist() rewrite drift (internal guard)"]
+    ["G023", "Hydration: unsupported node in {#each}"], ["G024", "persist() rewrite drift (internal guard)"],
+    ["G025", "Reserved top-level, prop, or import name (__wizz…, onMount, document…)"]
   ].map(([code, text]) => ({ code: "WIZZ-" + code, text }));
 
   function trackSheen(event) {
@@ -337,7 +339,7 @@ export default async function handler(request) {
     <main id="main" class="doc-main glass" on:pointermove={trackSheen}>
       <article class="prose">
         <header>
-          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.18.1 · syntax 1.4.2 · output 1.9.1</p>
+          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.20.0 · syntax 1.4.3 · output 1.10.1</p>
           <h1 class="rise" style="--i: 1">API Reference</h1>
           <p class="lead rise" style="--i: 2">The complete public surface: what a component script can call, what a template can express, what every compiled module exports, and the compiler, router, and server entry points behind them.</p>
         </header>
@@ -359,7 +361,7 @@ export default async function handler(request) {
 
         <h2 id="modules" class="reveal">Generated modules</h2>
         <p>Each component compiles to <code>Name.js</code>; server-renderable components also get <code>Name.server.js</code> and <code>Name.hydrate.js</code>. These surfaces are covered by the <strong>output</strong> version.</p>
-        <ApiEntry anchor="mount-component" name="mountComponent()" kind="default export" origin="Name.js" signature="export default function mountComponent(target: Node, props?: object): { setProps?(next: object): void; destroy(): void }" summary="Creates the component's DOM, appends its root to target, runs the initial update and mount hooks, and returns a handle. setProps exists only when the component declares props." params={mountParams} returns="{ setProps?, destroy } — call destroy() exactly once." example={mountExample} exampleLang="js" exampleTitle="manual mount" />
+        <ApiEntry anchor="mount-component" name="mountComponent()" kind="default export" origin="Name.js" signature="export default function mountComponent(target: Node, props?: object, anchor?: Node | null): { setProps?(next: object): void; destroy(): void }" summary="Creates the component's DOM, attaches its root to target, runs the initial update and mount hooks, and returns a handle. setProps exists only when the component declares props." params={mountParams} returns="{ setProps?, destroy } — call destroy() exactly once." example={mountExample} exampleLang="js" exampleTitle="manual mount" />
         <ApiEntry anchor="hydrate-component" name="hydrateComponent()" kind="named export" origin="Name.hydrate.js" signature="hydrateComponent(target: Element, props: object, state: object): Handle" summary="Adopts server-rendered markup in place: verifies tags, data-wizz-id attributes, and text against the template, then attaches listeners. On any mismatch it warns once, clears target, and mounts fresh." params={hydrateParams} returns="The same handle shape as mountComponent()." example={hydrateExample} exampleLang="js" exampleTitle="manual hydration" />
         <ApiEntry anchor="hydrate-root" name="hydrateRoot()" kind="named export" origin="Name.hydrate.js" signature="hydrateRoot(rootNode: Element, props: object, state: object): Handle" summary="Adopts the given node itself as the component root. Parents use it for nested hydration; a structural mismatch remounts inside the child's root without detaching the parent." params={hydrateRootParams} returns="The component handle." example={hydrateRootExample} exampleLang="js" exampleTitle="nested hydration" />
         <ApiEntry anchor="render-component" name="renderComponent()" kind="named export" origin="Name.server.js" signature="renderComponent(props?: object, options?: object): { html: string; head?: string; state: object }" summary="Renders escaped HTML without a DOM. Event handlers and hooks are skipped; author scripts run, so browser globals at the top level throw." params={renderParams} returns="{ html, head?, state }" example={renderExample} exampleLang="js" exampleTitle="server render" />
