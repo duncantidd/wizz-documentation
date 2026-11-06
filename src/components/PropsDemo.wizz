@@ -5,9 +5,6 @@
   let barStyle = "transform: scaleX(0.4)";
   let meterClass = "meter calm";
   let label = "CPU budget";
-  // The {updates} note renders before <Meter>: update lookups query by
-  // data-wizz-id from this root, and the child's own ids would otherwise
-  // match first in document order.
   let updates = 0;
 
   function handleLevel(event) {

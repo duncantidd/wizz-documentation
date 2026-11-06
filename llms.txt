@@ -1,6 +1,6 @@
 # Wizz.js
 
-> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.18.0, syntax 1.4.2, output 1.9.0.
+> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.18.1, syntax 1.4.2, output 1.9.1.
 
 Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail to compile. Before writing a `.wizz` file, read [the full reference](/llms-full.txt). The rules that trip agents up most:
 

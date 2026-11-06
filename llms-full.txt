@@ -2,7 +2,7 @@
 
 > Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
 
-Versions covered: compiler 1.18.0, syntax 1.4.2, output 1.9.0 (`wizz --version`).
+Versions covered: compiler 1.18.1, syntax 1.4.2, output 1.9.1 (`wizz --version`).
 Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
 
 Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
@@ -347,7 +347,7 @@ Keys: `(item.id)` retains and moves nodes by key; duplicate keys throw. Omit the
 {/if}
 ```
 
-The condition uses the same expression grammar (section 3). The branch is chosen ONCE AT MOUNT: changing the condition later does not swap an already-rendered branch, although expressions inside the taken branch still update. There is no `{:else if}` (WIZZ-P033): nest an `{#if}` inside `{:else}`. For interactive show/hide, bind a class:
+The condition uses the same expression grammar (section 3). The branch is chosen ONCE AT MOUNT: changing the condition later does not swap an already-rendered branch, although expressions inside the taken branch still update. Bindings inside the untaken branch are skipped. Before 1.18.1, a reactive binding inside an untaken branch crashed the mount, and an expression placed directly in a branch with no wrapping element never updated; if `wizz --version` reports an older compiler, run `wizz update`. There is no `{:else if}` (WIZZ-P033): nest an `{#if}` inside `{:else}`. For interactive show/hide, bind a class:
 
 ```html
 <script>
