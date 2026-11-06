@@ -251,6 +251,7 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
         <CodeBlock code={ifSource} lang="wizz" title="Panel.wizz" />
         <Callout kind="warn" title="Branches are chosen at mount" body="Changing a reactive condition does not yet swap an already-rendered branch. Use {#if} for structure decided by props or initial state, and drive interactive show/hide with a bound class or attribute." />
         <CodeBlock code={toggleSource} lang="wizz" title="Disclosure.wizz" />
+        <Callout kind="note" title="Upgrading from an earlier release" body="Before 1.18.1, a reactive binding inside an untaken branch crashed the mount, and an expression placed directly in a branch with no wrapping element never updated. If wizz --version reports an older compiler, run wizz update." />
 
         <h2 id="persist" class="reveal">persist(): cross-tab state</h2>
         <p>Initialize a top-level <code>let</code> with <code>persist(key, default)</code> and it survives reloads and stays in sync across tabs, with no other change to how you use it.</p>
