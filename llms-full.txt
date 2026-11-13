@@ -2,7 +2,7 @@
 
 > Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
 
-Versions covered: compiler 1.20.0, syntax 1.4.3, output 1.10.1 (`wizz --version`).
+Versions covered: compiler 1.21.0, syntax 1.4.3, output 1.11.0 (`wizz --version`).
 Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
 
 Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
@@ -132,7 +132,9 @@ Bind an attribute by making its ENTIRE, UNQUOTED value an expression.
 ```
 
 - WRONG: `class="card {state}"` or `href="{url}"`. Quoted values are static: the braces render literally. Use one expression for the whole value: `class={"card " + state}` or a precomputed `class={cardClass}`.
-- `value`, `checked`, and `disabled` update as DOM properties. Every other name is written with `setAttribute(name, String(value))` and is never removed: `hidden={false}` still hides the element (the attribute is present with the text `"false"`), and `undefined` renders as `"undefined"`. Toggle presence with a bound class and CSS instead. `aria-*` attributes are fine with `"true"`/`"false"` values.
+- `value`, `checked`, and `disabled` update as DOM properties.
+- From 1.21.0, HTML boolean attributes (`hidden`, `required`, `readonly`, `open`, `inert`, `multiple`, `selected`, `autofocus`, and the rest of the HTML list) are present when the value is truthy and removed when it is falsy: `hidden={isValid}` shows the element while `isValid` is `false`. Any other dynamic attribute is removed for `null`/`undefined` and otherwise set to `String(value)`, so `false` renders `"false"` and `aria-expanded={open}` stays correct. To drop a non-boolean attribute, hold `null` in state. Server rendering and hydration follow the same rules.
+- Before 1.21.0, every name other than `value`/`checked`/`disabled` was written with `setAttribute(name, String(value))` and never removed: `hidden={false}` still hid the element and `undefined` rendered as `"undefined"`. On those compilers, toggle presence with a bound class and CSS.
 - There is no `bind:`. `bind:value={name}` silently becomes a plain attribute. Pair `value={name}` with an `on:input` handler (section 8).
 
 ---
@@ -564,7 +566,7 @@ Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native e
 | --- | --- |
 | `{items.length}`, `{fmt(x)}`, `{a ? b : c}`, `{a && b}` | Compute `let count = items.length;` in `<script>`, render `{count}` |
 | `class="btn {variant}"` | `class={"btn " + variant}`, or `let btnClass = "btn " + variant;` then `class={btnClass}` |
-| `hidden={!open}`, `disabled`-style boolean attributes other than `disabled`/`checked` | Bind a class and hide with CSS: `hidden={false}` still hides |
+| `hidden={!open}` | `!` is not in the expression grammar: compute `let closed = !open;` in the handler and write `hidden={closed}` (1.21.0+ removes the attribute when falsy; on older compilers bind a class and hide with CSS) |
 | `bind:value={name}` / `v-model` | `value={name}` plus `on:input={(e) => name = e.target.value}` (1.17.1+) or a named handler |
 | `{:else if b}` | Nest `{#if b}` inside `{:else}` |
 | `<Card><p>Body</p></Card>` / `<slot>` | `<Card body="..." />` or compose native elements around the tag |

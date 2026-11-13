@@ -267,7 +267,7 @@
     <a class="brand" href="/" aria-label="Wizz.js home">
       <span class="mark" aria-hidden="true">W</span>
       <span class="word">Wizz<span class="dot">.js</span></span>
-      <span class="ver">1.20</span>
+      <span class="ver">1.21</span>
     </a>
     <ul class="links">{#each links as link (link.id)}<li><a class={link.linkClass} href={link.href} aria-current={link.current}>{link.label}</a></li>{/each}</ul>
     <div class="actions">

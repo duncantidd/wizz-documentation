@@ -6,7 +6,7 @@ Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail
 
 - A template has exactly one native root element.
 - `{...}` accepts only identifiers, member access (`a.b.c`), string and integer literals, `+ - * /` with parentheses, and strict equality (`a === "b"`). No function calls, ternaries, `!`, `!==`, `<`/`>`, or `&&`/`||`: compute values in `<script>` and reference them by name.
-- Dynamic attributes must be unquoted: `class={cardClass}` or `class={"card " + state}`. A quoted value such as `class="card {state}"` renders the braces literally. Dynamic attributes other than `value`/`checked`/`disabled` are stringified and never removed, so `hidden={false}` still hides. There is no `bind:`.
+- Dynamic attributes must be unquoted: `class={cardClass}` or `class={"card " + state}`. A quoted value such as `class="card {state}"` renders the braces literally. From 1.21.0, HTML boolean attributes (`hidden`, `required`, `open`, ...) toggle presence by truthiness and any dynamic attribute is removed for `null`/`undefined`; other attributes render `false` as `"false"`. Before 1.21.0, dynamic attributes other than `value`/`checked`/`disabled` were stringified and never removed, so `hidden={false}` still hid. There is no `bind:`.
 - Components are self-closing tags inside a native element: no children, no slots, and no `on:` directives on component tags (pass callback props).
 - `{#each}` sits inside a native element, has one native root element per row, and its body may not contain components, `on:` directives, or nested `{#if}`/`{#each}`. Delegate events from the parent.
 - Top-level `let` is reactive; update by reassignment (`items = [...items, x]`), not mutation (`items.push(x)`).
