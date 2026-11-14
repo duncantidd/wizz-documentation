@@ -104,17 +104,13 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
     { id: 2, title: "Build a keyed list", rowClass: "item" }
   ];
 
-  // {#each} bodies take no on: directives — delegate from the container.
-  function handleListClick(event) {
-    const row = event.target.closest("[data-id]");
-    if (!row) return;
-    const id = Number(row.dataset.id);
+  function removeTodo(id) {
     todos = todos.filter((todo) => todo.id !== id);
   }
 <\/script>
 
 <div class="todos">
-  <ul on:click={handleListClick}>{#each todos as todo (todo.id)}<li class={todo.rowClass} data-id={todo.id}>{todo.title}</li>{/each}</ul>
+  <ul>{#each todos as todo (todo.id)}<li class={todo.rowClass}><span>{todo.title}</span><button type="button" on:click={() => removeTodo(todo.id)}>×</button></li>{/each}</ul>
 </div>`;
 
   const keylessSource = `<script>
@@ -124,36 +120,40 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
 <ul class="tags">{#each tags as tag}<li>{tag}</li>{/each}</ul>`;
 
   const ifSource = `<script>
-  export let section = "About";
+  let open = false;
+  let error = "";
+
+  function toggle() {
+    open = !open;
+  }
 <\/script>
 
 <div class="panel">
-  {#if section === "About"}
-    <p>The counter is available.</p>
+  <button type="button" on:click={toggle}>Toggle details</button>
+  {#if open}
+    <p>Shown while open is truthy; removed from the DOM when false.</p>
   {:else}
-    <p>Unknown section.</p>
+    <p>Collapsed.</p>
+  {/if}
+  {#if error}
+    <p class="error">{error}</p>
   {/if}
 </div>`;
 
   const toggleSource = `<script>
   let open = false;
-  let panelClass = "panel";
+  let closed = true;
 
   function toggle() {
     open = !open;
-    panelClass = open ? "panel is-open" : "panel";
+    closed = !open;
   }
 <\/script>
 
 <section class="disclosure">
   <button on:click={toggle} aria-expanded={open}>Details</button>
-  <div class={panelClass}>Shown and hidden with CSS, updated reactively.</div>
-</section>
-
-<wizz:style>
-  .panel { display: none; }
-  .panel.is-open { display: block; }
-</wizz:style>`;
+  <div class="panel" hidden={closed}>Kept in the DOM while hidden, preserving internal state.</div>
+</section>`;
 
   const persistSource = `<script>
   let theme = persist("theme", "light");
@@ -230,14 +230,15 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
         <Callout kind="tip" title="Prefer named handlers" body="Inline arrows are reactive, but named functions keep templates scannable and are easy to unit-test." />
 
         <h2 id="lists" class="reveal">Lists with {"{#each}"}</h2>
-        <p>Give each row a key when node identity should follow the item — for example when rows reorder. On reassignment Wizz retains matching keys, moves them into the new order, updates their text and attributes, creates new keys, and removes missing ones. Duplicate keys throw.</p>
+        <p>Give each row a key when node identity should follow the item — for example when rows reorder. On reassignment Wizz retains matching keys, moves them into the new order, updates their text and attributes, creates new keys, and removes missing ones. Duplicate keys throw. Elements inside the row body may use <code>on:</code> directives with the item variable in scope (1.22.0+): when a retained key receives a new item object, its handlers automatically read the replacement, and removed rows release their listeners.</p>
         <CodeBlock code={listSource} lang="wizz" title="Todos.wizz" />
         <p>For primitives, or when position is identity enough, omit the key. A keyless block updates rows in place by index, appends as it grows, and trims as it shrinks.</p>
         <CodeBlock code={keylessSource} lang="wizz" title="Tags.wizz" />
         <div class="grid-2">
           <div class="mini-card"><h3>Every {"{#each}"} must…</h3><p>sit inside a native element, have exactly one native root element per row, and iterate a reactive <code>let</code> to update (a <code>const</code> renders once).</p></div>
-          <div class="mini-card"><h3>Row bodies may not contain…</h3><p>imported components, <code>on:</code> directives, or nested {"{#if}"}/{"{#each}"} blocks. Precompute row classes and labels, and delegate events.</p></div>
+          <div class="mini-card"><h3>Row bodies may not contain…</h3><p>imported components (<code>WIZZ-G004</code>) or nested {"{#if}"}/{"{#each}"} blocks (<code>WIZZ-G005</code>). Precompute per-row classes and labels in the script.</p></div>
         </div>
+        <Callout kind="note" title="Inline arrow vs. factory call on rows" body="An each item's on: expression is evaluated once when the row is created. Write on:click={() => removeTodo(todo.id)} rather than on:click={makeHandler(todo)} so the handler reads the latest item value on click. Before 1.22.0, on: inside {#each} failed with WIZZ-G006; delegate from the parent container on older compilers." />
 
         <h3 id="todo-demo" class="reveal">Live: keyed todo list</h3>
         <p>A keyed list with one delegated click listener, a submit handler, CSS-driven filtering, and <code>persist()</code> — add a few items and reload.</p>
@@ -247,11 +248,11 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
         </div>
 
         <h2 id="conditionals" class="reveal">Conditional rendering</h2>
-        <p><code>{"{#if}"}</code> chooses a branch with the expression grammar — identifiers, member access, literals, and strict equality — plus an optional <code>{"{:else}"}</code>.</p>
+        <p><code>{"{#if}"}</code> chooses a branch with the expression grammar — identifiers, member access, literals, and strict equality — plus an optional <code>{"{:else}"}</code>. From 1.22.0, whenever a reactive <code>let</code> or prop read by the test changes, Wizz re-evaluates the condition and swaps the branch in place if its truthiness changed: the old branch's DOM nodes, <code>on:</code> listeners, inner lists, and child components are torn down, and the new branch is built from current state. A test that reads only <code>const</code> bindings renders once at mount with no block overhead.</p>
         <CodeBlock code={ifSource} lang="wizz" title="Panel.wizz" />
-        <Callout kind="warn" title="Branches are chosen at mount" body="Changing a reactive condition does not yet swap an already-rendered branch. Use {#if} for structure decided by props or initial state, and drive interactive show/hide with a bound class or attribute." />
+        <Callout kind="tip" title="Preserving DOM state while hidden" body="Swapping an {#if} branch destroys the old branch and builds a fresh one, so typed input text, scroll position, or a child component's internal state inside that branch is reset. When an element should stay mounted while hidden, toggle hidden={closed} or a bound class instead." />
         <CodeBlock code={toggleSource} lang="wizz" title="Disclosure.wizz" />
-        <Callout kind="note" title="Upgrading from an earlier release" body="Before 1.18.1, a reactive binding inside an untaken branch crashed the mount, and an expression placed directly in a branch with no wrapping element never updated. If wizz --version reports an older compiler, run wizz update." />
+        <Callout kind="note" title="Upgrading from an earlier release" body="Before 1.22.0, {#if} chose its branch once at mount and never swapped it when state changed (and before 1.18.1, a reactive binding inside an untaken branch crashed the mount). If wizz --version reports an older compiler, run wizz update." />
 
         <h2 id="persist" class="reveal">persist(): cross-tab state</h2>
         <p>Initialize a top-level <code>let</code> with <code>persist(key, default)</code> and it survives reloads and stays in sync across tabs, with no other change to how you use it.</p>

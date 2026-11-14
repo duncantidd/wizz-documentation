@@ -1,6 +1,6 @@
 # Wizz.js
 
-> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.20.0, syntax 1.4.3, output 1.10.1.
+> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.22.0, syntax 1.5.0, output 1.12.0.
 
 Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail to compile. Before writing a `.wizz` file, read [the full reference](/llms-full.txt). The rules that trip agents up most:
 
@@ -8,9 +8,9 @@ Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail
 - `{...}` accepts only identifiers, member access (`a.b.c`), string and integer literals, `+ - * /` with parentheses, and strict equality (`a === "b"`). No function calls, ternaries, `!`, `!==`, `<`/`>`, or `&&`/`||`: compute values in `<script>` and reference them by name.
 - Dynamic attributes must be unquoted: `class={cardClass}` or `class={"card " + state}`. A quoted value such as `class="card {state}"` renders the braces literally. From 1.21.0, HTML boolean attributes (`hidden`, `required`, `open`, ...) toggle presence by truthiness and any dynamic attribute is removed for `null`/`undefined`; other attributes render `false` as `"false"`. Before 1.21.0, dynamic attributes other than `value`/`checked`/`disabled` were stringified and never removed, so `hidden={false}` still hid. There is no `bind:`.
 - Components are self-closing tags inside a native element: no children, no slots, and no `on:` directives on component tags (pass callback props).
-- `{#each}` sits inside a native element, has one native root element per row, and its body may not contain components, `on:` directives, or nested `{#if}`/`{#each}`. Delegate events from the parent.
+- `{#each}` sits inside a native element, has one native root element per row, and its body may not contain components or nested `{#if}`/`{#each}`. From 1.22.0, `on:` directives inside `{#each}` run with the row item in scope (`on:click={() => remove(item.id)}`); before 1.22.0 they failed with WIZZ-G006 and required delegation from the parent.
 - Top-level `let` is reactive; update by reassignment (`items = [...items, x]`), not mutation (`items.push(x)`).
-- `{#if}` picks its branch once at mount, and there is no `{:else if}`. Toggle interactive visibility with a bound class.
+- From 1.22.0, `{#if}` re-evaluates when a reactive `let` or prop read by its condition changes and swaps its branch in place (tearing down the old branch's listeners, lists, and child components); before 1.22.0, `{#if}` chose its branch once at mount. There is no `{:else if}`: nest `{#if}` inside `{:else}`. Use `hidden={flag}` when an element should keep its DOM state while hidden.
 - Assignments in inline `on:` handlers update the DOM (`on:input={(e) => name = e.target.value}`). Releases before 1.17.1 did not track them; upgrade with `wizz update`.
 - The Wizz MCP server's `project_overview` and `language_contract` tools return these limits as a table with working patterns (1.17.1+).
 - `onMount`, `onDestroy`, and `persist` are compiler globals: call them without importing. Read `window`/`document` only inside `onMount`.

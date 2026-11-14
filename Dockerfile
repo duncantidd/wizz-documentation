@@ -4,12 +4,13 @@
 FROM node:22-alpine AS build
 
 # Pin the CLI so a new Wizz release never changes a deploy silently.
-ARG WIZZ_VERSION=1.21.0
+ARG WIZZ_VERSION=1.22.0
 
 # The installer is a bash script that downloads and checksums the release.
 RUN apk add --no-cache bash curl
 RUN curl -fsSL "https://raw.githubusercontent.com/duncantidd/wizz.js/v${WIZZ_VERSION}/scripts/install-cli.sh" \
-      | bash -s -- "https://github.com/duncantidd/wizz.js/releases/download/v${WIZZ_VERSION}/wizz-${WIZZ_VERSION}.tgz"
+      | bash -s -- "https://github.com/duncantidd/wizz.js/releases/download/v${WIZZ_VERSION}/wizz-${WIZZ_VERSION}.tgz" \
+ && /root/.local/bin/wizz --version
 ENV PATH="/root/.local/bin:${PATH}"
 
 WORKDIR /app

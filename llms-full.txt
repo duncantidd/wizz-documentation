@@ -2,7 +2,7 @@
 
 > Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
 
-Versions covered: compiler 1.21.0, syntax 1.4.3, output 1.11.0 (`wizz --version`).
+Versions covered: compiler 1.22.0, syntax 1.5.0, output 1.12.0 (`wizz --version`).
 Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
 
 Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
@@ -295,9 +295,9 @@ onMount(recompute);
 
 - Assignments inside an inline arrow or `function` handler update the DOM like assignments in script functions (compiler 1.17.1 and later). Write each mutation as its own statement.
 - An inline handler that assigns a prop is WIZZ-G015, the same as in the script (1.17.1 and later).
-- Native elements only: never on component tags (WIZZ-G011) or inside `{#each}` bodies (WIZZ-G006).
+- Native elements only: never on component tags (WIZZ-G011). From 1.22.0, `on:` directives work inside `{#each}` bodies with the row's item binding in scope (`on:click={() => remove(item.id)}`); before 1.22.0 they failed with WIZZ-G006.
 - Handlers are client-only. Server rendering skips them; hydration attaches them.
-- Wizz removes every listener it attached on `destroy()`. Listeners you add to `window`/`document` yourself must be removed in `onDestroy`.
+- Wizz removes every listener it attached when its owning row, `{#if}` branch, or component is destroyed. Listeners you add to `window`/`document` yourself must be removed in `onDestroy`.
 
 ---
 
@@ -310,17 +310,13 @@ onMount(recompute);
     { id: 2, title: "Build a keyed list", rowClass: "item" }
   ];
 
-  // Rows can't have on: directives, so delegate from the container.
-  function handleListClick(event) {
-    const row = event.target.closest("[data-id]");
-    if (!row) return;
-    const id = Number(row.dataset.id);
+  function removeTodo(id) {
     todos = todos.filter((todo) => todo.id !== id);
   }
 </script>
 
 <div class="todos">
-  <ul on:click={handleListClick}>{#each todos as todo (todo.id)}<li class={todo.rowClass} data-id={todo.id}>{todo.title}</li>{/each}</ul>
+  <ul>{#each todos as todo (todo.id)}<li class={todo.rowClass}><span>{todo.title}</span><button type="button" on:click={() => removeTodo(todo.id)}>×</button></li>{/each}</ul>
 </div>
 ```
 
@@ -334,8 +330,9 @@ Every `{#each}` must:
 Row bodies may NOT contain:
 
 - Imported components (WIZZ-G004)
-- `on:` directives (WIZZ-G006): use event delegation as above
 - Nested `{#if}` or `{#each}` (WIZZ-G005): precompute per-row classes and labels in the script
+
+Row event handlers (1.22.0+): `on:` directives anywhere in a row run with the item variable in scope. Write per-row handlers as inline arrows (`on:click={() => removeTodo(todo.id)}`), which read the latest item when a keyed row is updated with a replacement object; a factory call (`on:click={makeHandler(todo)}`) evaluates once when the row is created and keeps the first item value. Before 1.22.0, `on:` inside `{#each}` failed with WIZZ-G006 — on older compilers, attach one listener to the parent container and delegate with `event.target.closest("[data-id]")`.
 
 Keys: `(item.id)` retains and moves nodes by key; duplicate keys throw. Omit the key for primitives or when position is identity enough (rows update by index).
 
@@ -351,28 +348,25 @@ Keys: `(item.id)` retains and moves nodes by key; duplicate keys throw. Omit the
 {/if}
 ```
 
-The condition uses the same expression grammar (section 3). The branch is chosen ONCE AT MOUNT: changing the condition later does not swap an already-rendered branch, although expressions inside the taken branch still update. Bindings inside the untaken branch are skipped. Before 1.18.1, a reactive binding inside an untaken branch crashed the mount, and an expression placed directly in a branch with no wrapping element never updated; if `wizz --version` reports an older compiler, run `wizz update`. There is no `{:else if}` (WIZZ-P033): nest an `{#if}` inside `{:else}`. For interactive show/hide, bind a class:
+The condition uses the same expression grammar (section 3). From 1.22.0, whenever a reactive `let` or prop read by the condition changes, the test is re-evaluated on the next batched update and the branch is replaced in place when its truthiness changes: the old branch leaves the DOM along with its `on:` listeners, inner lists, and child components, and the new branch is built from current state. A condition that reads only `const` values is evaluated once at mount with no block overhead. Before 1.22.0, `{#if}` chose its branch once at mount and never swapped it later (and before 1.18.1, a reactive binding inside an untaken branch crashed the mount); if `wizz --version` reports an older compiler, run `wizz update`.
+
+There is no `{:else if}` (WIZZ-P033): nest an `{#if}` inside `{:else}`. Because replacing a branch rebuilds its DOM, internal DOM state inside a swapped branch (typed input text, scroll position, a child component's own state) is not preserved — when an element should stay mounted while hidden, toggle `hidden={closed}` or a bound class:
 
 ```html
 <script>
   let open = false;
-  let panelClass = "panel";
+  let closed = true;
 
   function toggle() {
     open = !open;
-    panelClass = open ? "panel is-open" : "panel";
+    closed = !open;
   }
 </script>
 
 <section class="disclosure">
   <button on:click={toggle} aria-expanded={open}>Details</button>
-  <div class={panelClass}>Shown and hidden with CSS.</div>
+  <div class="panel" hidden={closed}>Kept in the DOM while hidden.</div>
 </section>
-
-<wizz:style>
-  .panel { display: none; }
-  .panel.is-open { display: block; }
-</wizz:style>
 ```
 
 ---
@@ -547,7 +541,7 @@ Most common:
 | WIZZ-G003 | `{#each}` body needs one root element | Wrap the row |
 | WIZZ-G004 | Component inside `{#each}` | Native markup in rows |
 | WIZZ-G005 | Nested block inside `{#each}` | Precompute row values |
-| WIZZ-G006 | `on:` inside `{#each}` | Delegate from the container |
+| WIZZ-G006 | Retired in 1.22.0 (was: `on:` inside `{#each}`) | Supported in 1.22.0+; upgrade or delegate from the container |
 | WIZZ-G008 | Children on a component tag | Pass props |
 | WIZZ-G010 | Component tag outside a native element | Wrap the tag |
 | WIZZ-G011 | `on:` on a component tag | Pass a callback prop |
@@ -556,7 +550,7 @@ Most common:
 
 Parse stage (WIZZ-P): P001 tokenizer error · P002 malformed `{#each}` · P003 unexpected `{/each}` · P004 unexpected `{/if}` · P005 unexpected `{:else}` · P006 disallowed child in `<title>` · P007 disallowed element in `<wizz:head>` · P008 element in `<wizz:style>` · P009 attributes on `<wizz:head>` · P010 nested `<wizz:head>` · P011 attributes on `<wizz:style>` · P012 nested `<wizz:style>` · P013 duplicate `<wizz:head>` · P014 duplicate `<wizz:style>` · P015 block directive in `<wizz:head>` · P016 expression directly in `<wizz:head>` · P017 expression in `<wizz:style>` · P018 mismatched closing tag · P019 only title/meta/link in head · P020 plain `<style>` · P021 closing tag on void element · P022 unclosed tag · P023 unexpected closing tag · P024 unsupported token · P025 unclosed string in expression · P026 unexpected character in expression · P027 unparseable expression start · P028 expected `)` · P029 expected property after `.` · P030 unexpected expression token · P031 missing `{#if}` condition · P032 dynamic attribute missing expression · P033 template expression error · P034 invalid prop name · P035 reserved prop prefix `__wizz` · P036 `export let` without a name · P037 `export` not at top level · P038 one prop per `export let` · P039 invalid prop declaration · P040 duplicate prop · P041 prop missing value · P042 prop missing semicolon · P043 unsupported export syntax · P044 `persist()` on a prop · P045 `persist()` on a const · P046 `persist()` not top level · P047 statements trailing a `persist()` declaration · P048 `persist()` missing arguments · P049 `persist()` extra arguments · P050 `persist()` key not a string literal · P051 nested `persist()` · P052 unparseable `persist()` call · P053 expression depth budget exceeded · P054 template depth budget exceeded.
 
-Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native element · G003 `{#each}` body needs one root · G004 component in `{#each}` · G005 unsupported node in `{#each}` (nested blocks) · G006 `on:` in `{#each}` · G007 invalid prop attribute name · G008 children on component tag · G009 component missing id (internal) · G010 component tag outside native element · G011 `on:` on component tag · G012 event directive missing handler · G013 invalid event directive · G014 disallowed child in `<title>` · G015 assignment to a prop · G016 imports must be on their own lines · G017 reserved reactive name · G018 server build: unsupported node · G019 server build: unsupported head node · G020 server build: component not server-renderable · G021 void element with children · G022 hydration: unsupported node · G023 hydration: unsupported node in `{#each}` · G024 `persist()` rewrite drift (internal) · G025 reserved top-level, prop, or import name.
+Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native element · G003 `{#each}` body needs one root · G004 component in `{#each}` · G005 unsupported node in `{#each}` (nested blocks) · G006 retired in 1.22.0 (was: `on:` in `{#each}`) · G007 invalid prop attribute name · G008 children on component tag · G009 component missing id (internal) · G010 component tag outside native element · G011 `on:` on component tag · G012 event directive missing handler · G013 invalid event directive · G014 disallowed child in `<title>` · G015 assignment to a prop · G016 imports must be on their own lines · G017 reserved reactive name · G018 server build: unsupported node · G019 server build: unsupported head node · G020 server build: component not server-renderable · G021 void element with children · G022 hydration: unsupported node · G023 hydration: unsupported node in `{#each}` · G024 `persist()` rewrite drift (internal) · G025 reserved top-level, prop, or import name.
 
 ---
 
@@ -571,7 +565,7 @@ Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native e
 | `{:else if b}` | Nest `{#if b}` inside `{:else}` |
 | `<Card><p>Body</p></Card>` / `<slot>` | `<Card body="..." />` or compose native elements around the tag |
 | `<Child on:save={fn} />` / `@save` / `onSave` event emit | Callback prop: `<Child onSave={fn} />`, child calls `onSave(value)` |
-| `{#each}` row with `on:click` or a component | Native row with `data-id`, one delegated listener on the parent |
+| `{#each}` row with a component (`<Row item={item} />`) | Native row markup (`on:click={() => fn(item.id)}` on native elements inside `{#each}` works in 1.22.0+; on older compilers use a delegated listener on the parent) |
 | `items.push(x)` | `items = [...items, x];` |
 | `$:` reactive statements, `computed`, `useMemo` | A `recompute()` function called after changes and in `onMount` |
 | `useState`, `ref()`, `$state` | Top-level `let` |
