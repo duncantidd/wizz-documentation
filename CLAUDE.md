@@ -81,13 +81,13 @@ Consult `.skills/wizz/README.md` and its 4 sub-guides before writing `.wizz` fil
   - **Lifecycle Hooks**: Call `onMount(() => { ... })` and `onDestroy(() => { ... })` directly in `<script>` **without importing them** (they are compiler globals). Always read browser-only APIs (`window`, `document`, `URLSearchParams(document.location.search)`) inside `onMount` so SSR output matches initial hydration.
   - **Events**: Bind native events with `on:<event>={namedHandler}` (e.g., `on:click={toggleSidebar}`). House style for this site: prefer named handlers over inline arrows (`on:click={() => ...}`) so templates stay scannable. This is a style rule, not a compiler limit: from Wizz 1.17.1, assignments inside inline arrows update the DOM.
 - **Control Flow (`{#if}` and `{#each}`)**:
-  - **Branching**: `{#if condition} ... {:else} ... {/if}` uses safe expressions (or precomputed booleans).
+  - **Branching**: `{#if condition} ... {:else} ... {/if}` uses safe expressions (or precomputed booleans) and re-evaluates whenever a reactive `let` or prop read by `condition` changes, swapping branches in place.
   - **`{#each}` 4 Strict Constraints**:
     1. Must be immediately enclosed inside a native HTML element (`<ul>`, `<div>`, `<nav>`).
     2. Loop body must have **exactly one native root element** (`<li data-id="{item.id}">...</li>`).
     3. Iterated collection must be a top-level reactive `let` variable.
-    4. Loop body **MUST NOT** contain imported components, `on:<event>` directives, or nested `{#if}` / `{#each}` blocks.
-  - **List Interactions via Event Delegation**: Attach `on:click={handleListClick}` to the parent container outside `{#each}` and resolve the clicked item via `event.target.closest('[data-id]')`.
+    4. Loop body **MUST NOT** contain imported components (`WIZZ-G004`) or nested `{#if}` / `{#each}` blocks (`WIZZ-G005`). (`on:<event>` directives inside `{#each}` bodies are supported in Wizz 1.22.0+ with the item variable in scope.)
+  - **List Interactions**: Use `on:click={() => handleRow(item.id)}` on native elements inside `{#each}` (1.22.0+), or attach `on:click={handleListClick}` to the parent container outside `{#each}` and resolve the clicked item via `event.target.closest('[data-id]')`.
   - **List Conditionals via Precomputation**: Precompute active classes/labels inside `<script>` (e.g. `item.activeClass = item.id === currentId ? "is-active" : ""`) and bind it unquoted: `class={"nav-item " + item.activeClass}` inside `{#each}`. A quoted `class="nav-item {item.activeClass}"` renders the braces literally.
 
 ### 3. Routing, Server APIs & Styling Conventions

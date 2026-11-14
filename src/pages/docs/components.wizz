@@ -301,13 +301,13 @@ handle.destroy();                     // call exactly once`;
               <tr><td>{"{#each}"} names a bare collection, no index alias</td><td>Copy into a top-level <code>let</code>; store indexes on items</td><td><code>WIZZ-P002</code></td></tr>
               <tr><td>{"{#each}"} inside a native element</td><td>Wrap the block</td><td><code>WIZZ-G002</code></td></tr>
               <tr><td>One root element per {"{#each}"} body</td><td>Wrap the row</td><td><code>WIZZ-G003</code></td></tr>
-              <tr><td>No components / <code>on:</code> inside {"{#each}"}</td><td>Native markup + delegation</td><td><code>WIZZ-G004</code> / <code>G006</code></td></tr>
+              <tr><td>No components or nested blocks inside {"{#each}"}</td><td>Native markup + precomputed row values</td><td><code>WIZZ-G004</code> / <code>G005</code></td></tr>
             </tbody>
           </table>
         </div>
         <p>A few behaviors compile cleanly but are worth knowing:</p>
         <ul>
-          <li><strong>{"{#if}"} is chosen at mount.</strong> Toggle visibility of reactive UI with a bound class instead: bindings in the untaken branch are skipped, and that branch never appears later.</li>
+          <li><strong>{"{#if}"} replaces its branch when its condition changes.</strong> From 1.22.0, changing a reactive <code>let</code> or prop read by the test tears down the old branch (nodes, listeners, inner lists, and child components) and builds the new one from current state. A test that reads only <code>const</code> values is evaluated once at mount, and DOM state inside a replaced branch is not preserved — use <code>{"hidden={flag}"}</code> or a bound class when an element should stay mounted while hidden. Before 1.22.0, <code>{"{#if}"}</code> chose its branch once at mount; run <code>wizz update</code> if you are on an older compiler.</li>
           <li><strong>Only boolean attributes drop on <code>false</code>.</strong> From 1.21.0, <code>{"hidden={false}"}</code> removes the attribute, but a non-boolean attribute such as <code>title</code> or <code>aria-pressed</code> renders <code>"false"</code>; pass <code>null</code> to remove it. Before 1.21.0, no dynamic attribute was ever removed, so <code>{"hidden={false}"}</code> still hid; run <code>wizz update</code> if you are on an older compiler.</li>
           <li><strong>In-place mutation does not update.</strong> <code>items.push(x)</code> changes the array but not the DOM; reassign with <code>{"items = [...items, x]"}</code>.</li>
           <li><strong>Avoid empty-string text interpolations</strong> in server-rendered components: an empty text node does not survive HTML parsing, so hydration falls back to a client render. Initialize display strings to something visible.</li>

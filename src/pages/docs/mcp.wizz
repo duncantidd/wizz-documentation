@@ -50,7 +50,7 @@
   const overviewOut = `{
   "root": "/mnt/c/Users/dunca/Develop/wizz-documentation",
   "inputDirectory": "src",
-  "versions": { "compiler": "1.21.0", "syntax": "1.4.3", "output": "1.11.0" },
+  "versions": { "compiler": "1.22.0", "syntax": "1.5.0", "output": "1.12.0" },
   "documentShell": true,
   "distPresent": true,
   "adapters": ["node"],
@@ -61,11 +61,11 @@
   "apiRoutes": [{ "routePath": "/api/greet", "filePath": "server/api/greet.js" }],
   "templateLimits": [                 // 1.17.1 and later, one row per area
     {
-      "area": "{#if}",
-      "supported": "{#if cond}...{:else}...{/if}, nesting, ...",
-      "limit": "The branch is chosen once, at mount; ...",
-      "failure": "Silent non-update ({:else if}: WIZZ-P033)",
-      "workaround": "Render every state and toggle visibility with a reactive class plus CSS ..."
+      "area": "\`{#if}\`",
+      "supported": "\`{#if cond}...{:else}...{/if}\`, nesting, events, lists, and components inside branches. The test is re-evaluated whenever a reactive \`let\` or prop it reads changes, ...",
+      "limit": "No \`{:else if}\`. A test that reads only \`const\` values is evaluated once, at mount. A replaced branch is rebuilt, ...",
+      "failure": "\`{:else if}\`: compile error (WIZZ-P033); \`const\` test and lost branch state: silent",
+      "workaround": "Chain conditions by nesting \`{#if}\` inside \`{:else}\`. Keep state that must survive a hidden branch in a script \`let\`, or keep the element mounted and toggle it with \`hidden={flag}\`."
     }
   ]
 }`;

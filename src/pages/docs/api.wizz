@@ -107,10 +107,10 @@
   ];
   const onExample = `<input on:input={handleInput} />
 <button on:click={(event) => add(event.detail)}>Add</button>
-<ul on:click={handleListClick}>{#each rows as row (row.id)}<li data-id={row.id}>{row.label}</li>{/each}</ul>`;
+<ul>{#each rows as row (row.id)}<li><span>{row.label}</span><button on:click={() => remove(row.id)}>×</button></li>{/each}</ul>`;
 
   const ifParams = [
-    { name: "condition", type: "expression", desc: "Identifier, member access, literal, or strict equality (===)." }
+    { name: "condition", type: "expression", desc: "Identifier, member access, literal, arithmetic, or strict equality (===)." }
   ];
   const ifExample = `{#if status === "ready"}
   <p>Ready.</p>
@@ -120,10 +120,10 @@
 
   const eachParams = [
     { name: "items", type: "reactive let", desc: "The collection. A const renders once at mount; a let updates on reassignment." },
-    { name: "item", type: "identifier", desc: "Name for the current element inside the body." },
+    { name: "item", type: "identifier", desc: "Name for the current element inside the body, in scope for text, attributes, and on: handlers." },
     { name: "(key)", type: "expression?", desc: "Optional unique key. Keyed blocks retain and move nodes by key; keyless blocks reconcile by index. Duplicate keys throw." }
   ];
-  const eachExample = `<ul class="users">{#each users as user (user.id)}<li class={user.rowClass}>{user.name}</li>{/each}</ul>`;
+  const eachExample = `<ul class="users">{#each users as user (user.id)}<li class={user.rowClass}><span>{user.name}</span><button on:click={() => remove(user.id)}>×</button></li>{/each}</ul>`;
 
   const headParams = [
     { name: "children", type: "<title> | <meta> | <link>", desc: "The only permitted elements. Expressions evaluate at render time; on: directives are skipped." }
@@ -242,7 +242,7 @@ const { source, sourceMap } = compileServer(componentSource, {
   const versionsExample = `const { VERSIONS } = require("./src/compiler");
 
 VERSIONS;
-// { compiler: "1.21.0", syntax: "1.4.3", output: "1.11.0" }  (frozen)`;
+// { compiler: "1.22.0", syntax: "1.5.0", output: "1.12.0" }  (frozen)`;
 
   const noParams = [];
 
@@ -305,7 +305,7 @@ export default async function handler(request) {
   const generateCodes = [
     ["G001", "Template has no root element"], ["G002", "{#each} outside a native element"],
     ["G003", "{#each} body must have one root element"], ["G004", "Component inside {#each}"],
-    ["G005", "Unsupported node inside {#each} (nested blocks)"], ["G006", "on: directive inside {#each}"],
+    ["G005", "Unsupported node inside {#each} (nested blocks)"], ["G006", "Retired in 1.22.0 (was: on: directive inside {#each})"],
     ["G007", "Invalid prop attribute name"], ["G008", "Children on a component tag"],
     ["G009", "Component missing its id (internal pipeline guard)"], ["G010", "Component tag outside a native element"],
     ["G011", "on: directive on a component tag"], ["G012", "Event directive missing handler"],
@@ -339,7 +339,7 @@ export default async function handler(request) {
     <main id="main" class="doc-main glass" on:pointermove={trackSheen}>
       <article class="prose">
         <header>
-          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.21.0 · syntax 1.4.3 · output 1.11.0</p>
+          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.22.0 · syntax 1.5.0 · output 1.12.0</p>
           <h1 class="rise" style="--i: 1">API Reference</h1>
           <p class="lead rise" style="--i: 2">The complete public surface: what a component script can call, what a template can express, what every compiled module exports, and the compiler, router, and server entry points behind them.</p>
         </header>
@@ -353,9 +353,9 @@ export default async function handler(request) {
 
         <h2 id="template" class="reveal">Template syntax</h2>
         <p>Expressions in <code>{"{...}"}</code> accept identifiers, member access, string and number literals, and strict equality. Bind attributes with an unquoted expression as the whole value.</p>
-        <ApiEntry anchor="on-directive" name="on:event" kind="directive" origin="native elements" signature="<element on:event={handler}>" summary="Attaches a native listener with addEventListener. Client-only; removed automatically on destroy. Not allowed on component tags (WIZZ-G011) or inside {#each} bodies (WIZZ-G006) — delegate from the container instead." params={onParams} returns="" example={onExample} exampleTitle="directives" />
-        <ApiEntry anchor="if-block" name="{#if} … {:else} … {/if}" kind="block" origin="template" signature="{#if condition} … {:else} … {/if}" summary="Chooses a branch at mount time. Changing the condition later does not swap an already-rendered branch, so drive interactive show/hide with a bound class." params={ifParams} returns="" example={ifExample} exampleTitle="branch" />
-        <ApiEntry anchor="each-block" name="{#each} … {/each}" kind="block" origin="template" signature="{#each items as item (key)} <row /> {/each}" summary="Renders one native root element per item, inside a native parent. Bodies may not contain components, on: directives, or nested blocks." params={eachParams} returns="" example={eachExample} exampleTitle="list" />
+        <ApiEntry anchor="on-directive" name="on:event" kind="directive" origin="native elements" signature="<element on:event={handler}>" summary="Attaches a native listener with addEventListener. Client-only; removed automatically when its row, branch, or component is destroyed. Allowed inside {#each} bodies with the item in scope (1.22.0+). Not allowed on component tags (WIZZ-G011) — pass a callback prop instead." params={onParams} returns="" example={onExample} exampleTitle="directives" />
+        <ApiEntry anchor="if-block" name="{#if} … {:else} … {/if}" kind="block" origin="template" signature="{#if condition} … {:else} … {/if}" summary="Renders the matching branch and swaps branches in place when a reactive dependency of condition changes (1.22.0+), releasing the old branch's listeners, lists, and child components. A condition with no reactive dependencies renders once at mount." params={ifParams} returns="" example={ifExample} exampleTitle="branch" />
+        <ApiEntry anchor="each-block" name="{#each} … {/each}" kind="block" origin="template" signature="{#each items as item (key)} <row /> {/each}" summary="Renders one native root element per item, inside a native parent. Elements inside the body may use on: directives with item in scope (1.22.0+). Bodies may not contain components (WIZZ-G004) or nested blocks (WIZZ-G005)." params={eachParams} returns="" example={eachExample} exampleTitle="list" />
         <ApiEntry anchor="wizz-head" name="<wizz:head>" kind="block" origin="component root" signature="<wizz:head> <title/> <meta/> <link/> </wizz:head>" summary="Per-component document metadata. Server-rendered into the head and adopted on hydration; client mounts prepend tagged nodes and destroy() releases them. Multiple titles resolve last-in-tree-wins." params={headParams} returns="" example={headExample} exampleTitle="head" />
         <ApiEntry anchor="wizz-style" name="<wizz:style>" kind="block" origin="component root" signature="<wizz:style> /* raw CSS */ </wizz:style>" summary="Component-scoped CSS. Delivered once per document in dev, adopted on hydration, refcounted on client mounts, and extracted to dist/wizz.css by wizz build, whose modules then carry no CSS. Expressions are never interpolated into CSS." params={styleParams} returns="" example={styleExample} exampleTitle="styles" />
 
