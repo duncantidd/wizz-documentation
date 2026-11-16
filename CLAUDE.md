@@ -88,7 +88,7 @@ Consult `.skills/wizz/README.md` and its 4 sub-guides before writing `.wizz` fil
     3. Iterated collection must be a top-level reactive `let` variable.
     4. Loop body **MUST NOT** contain imported components (`WIZZ-G004`) or nested `{#if}` / `{#each}` blocks (`WIZZ-G005`). (`on:<event>` directives inside `{#each}` bodies are supported in Wizz 1.22.0+ with the item variable in scope.)
   - **List Interactions**: Use `on:click={() => handleRow(item.id)}` on native elements inside `{#each}` (1.22.0+), or attach `on:click={handleListClick}` to the parent container outside `{#each}` and resolve the clicked item via `event.target.closest('[data-id]')`.
-  - **List Conditionals via Precomputation**: Precompute active classes/labels inside `<script>` (e.g. `item.activeClass = item.id === currentId ? "is-active" : ""`) and bind it unquoted: `class={"nav-item " + item.activeClass}` inside `{#each}`. A quoted `class="nav-item {item.activeClass}"` renders the braces literally.
+  - **List Conditionals via Precomputation**: Precompute active classes/labels inside `<script>` (e.g. `item.activeClass = item.id === currentId ? "is-active" : ""`) and bind it unquoted: `class={"nav-item " + item.activeClass}` inside `{#each}`. A quoted `class="nav-item {item.activeClass}"` fails with WIZZ-P055 (1.22.1+; older compilers rendered the braces literally).
 
 ### 3. Routing, Server APIs & Styling Conventions
 - **Pages & Routing**:
