@@ -299,7 +299,7 @@ export default async function handler(request) {
     ["P048", "persist() missing arguments"], ["P049", "persist() extra arguments"],
     ["P050", "persist() key not a string literal"], ["P051", "Nested persist()"],
     ["P052", "Unparseable persist() call"], ["P053", "Expression depth budget exceeded"],
-    ["P054", "Template depth budget exceeded"]
+    ["P054", "Template depth budget exceeded"], ["P055", "Expression inside a quoted attribute value"]
   ].map(([code, text]) => ({ code: "WIZZ-" + code, text }));
 
   const generateCodes = [
@@ -353,7 +353,7 @@ export default async function handler(request) {
 
         <h2 id="template" class="reveal">Template syntax</h2>
         <p>Expressions in <code>{"{...}"}</code> accept identifiers, member access, string and number literals, and strict equality. Bind attributes with an unquoted expression as the whole value.</p>
-        <ApiEntry anchor="on-directive" name="on:event" kind="directive" origin="native elements" signature="<element on:event={handler}>" summary="Attaches a native listener with addEventListener. Client-only; removed automatically when its row, branch, or component is destroyed. Allowed inside {#each} bodies with the item in scope (1.22.0+). Not allowed on component tags (WIZZ-G011) — pass a callback prop instead." params={onParams} returns="" example={onExample} exampleTitle="directives" />
+        <ApiEntry anchor="on-directive" name="on:event" kind="directive" origin="native elements" signature={'<element on:event={handler}>'} summary="Attaches a native listener with addEventListener. Client-only; removed automatically when its row, branch, or component is destroyed. Allowed inside {#each} bodies with the item in scope (1.22.0+). Not allowed on component tags (WIZZ-G011) — pass a callback prop instead." params={onParams} returns="" example={onExample} exampleTitle="directives" />
         <ApiEntry anchor="if-block" name="{#if} … {:else} … {/if}" kind="block" origin="template" signature="{#if condition} … {:else} … {/if}" summary="Renders the matching branch and swaps branches in place when a reactive dependency of condition changes (1.22.0+), releasing the old branch's listeners, lists, and child components. A condition with no reactive dependencies renders once at mount." params={ifParams} returns="" example={ifExample} exampleTitle="branch" />
         <ApiEntry anchor="each-block" name="{#each} … {/each}" kind="block" origin="template" signature="{#each items as item (key)} <row /> {/each}" summary="Renders one native root element per item, inside a native parent. Elements inside the body may use on: directives with item in scope (1.22.0+). Bodies may not contain components (WIZZ-G004) or nested blocks (WIZZ-G005)." params={eachParams} returns="" example={eachExample} exampleTitle="list" />
         <ApiEntry anchor="wizz-head" name="<wizz:head>" kind="block" origin="component root" signature="<wizz:head> <title/> <meta/> <link/> </wizz:head>" summary="Per-component document metadata. Server-rendered into the head and adopted on hydration; client mounts prepend tagged nodes and destroy() releases them. Multiple titles resolve last-in-tree-wins." params={headParams} returns="" example={headExample} exampleTitle="head" />
