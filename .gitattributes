@@ -4,3 +4,10 @@
 *.css text eol=lf
 *.html text eol=lf
 *.js text eol=lf
+# The Dockerfile and shell scripts run on Linux: keep them LF so a Windows
+# checkout with core.autocrlf=true cannot leave a CRLF copy that blocks
+# switching branches.
+Dockerfile text eol=lf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf

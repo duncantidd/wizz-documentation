@@ -106,12 +106,29 @@
     { name: "handler", type: "identifier | (event) => …", desc: "A component function, or an expression whose value is passed to addEventListener." }
   ];
   const onExample = `<input on:input={handleInput} />
+<input on:input={(e) => (name = e.target.value)} />
 <button on:click={(event) => add(event.detail)}>Add</button>
 <ul>{#each rows as row (row.id)}<li><span>{row.label}</span><button on:click={() => remove(row.id)}>×</button></li>{/each}</ul>`;
 
   const ifParams = [
-    { name: "condition", type: "expression", desc: "Identifier, member access, literal, arithmetic, or strict equality (===)." }
+    { name: "condition", type: "expression", desc: "Any template expression: literals, member access, arithmetic, comparisons, && / ||, ! / -, a ? b : c, and calls (1.23.0+)." }
   ];
+
+  const bindParams = [
+    { name: "bind:value", type: "top-level let", desc: "On <input> (not checkbox, radio, or file), <textarea>, and <select>. type=\"number\" / \"range\" bind numbers; an empty field binds null." },
+    { name: "bind:checked", type: "top-level let", desc: "On <input type=\"checkbox\">." }
+  ];
+  const bindExample = `<script>
+  let food = "";
+  let calories = 0;
+  let logged = false;
+<\/script>
+
+<form>
+  <input bind:value={food} />
+  <input type="number" bind:value={calories} />
+  <input type="checkbox" bind:checked={logged} />
+</form>`;
   const ifExample = `{#if status === "ready"}
   <p>Ready.</p>
 {:else}
@@ -208,6 +225,7 @@ const body = '<div id="app">' + html + "</div>" + serializeInitialState(state);
     { name: "options.extractedStyles", type: "boolean?", desc: "The document links the scoped CSS from a stylesheet, so the module carries none and injects no style tag. Scope attributes stay in the markup. Use the same value for every module on a page." },
     { name: "options.diagnostics", type: "'collect'?", desc: "Return { diagnostics: [...] } records instead of throwing." }
   ];
+  // compile() results also carry warnings (1.23.0+): see the example.
   const compileExample = `const { compile } = require("./src/compiler");
 
 const { source, payload, sourceMap, version } = compile(componentSource, {
@@ -222,7 +240,11 @@ try {
 }
 
 const result = compile("<main><p>hi", { filePath: "src/App.wizz", diagnostics: "collect" });
-result.diagnostics[0].code;   // "WIZZ-P022"`;
+result.diagnostics[0].code;   // "WIZZ-P022"
+
+// Warnings never fail a compile (1.23.0+): same record shape, severity "warning".
+const { warnings } = compile(source, { filePath: "src/App.wizz" });
+warnings[0];   // { code: "WIZZ-G026", severity: "warning", message, file, line, column }`;
 
   const compileServerParams = [
     { name: "source", type: "string", desc: "The .wizz component source." },
@@ -242,7 +264,7 @@ const { source, sourceMap } = compileServer(componentSource, {
   const versionsExample = `const { VERSIONS } = require("./src/compiler");
 
 VERSIONS;
-// { compiler: "1.22.1", syntax: "1.5.1", output: "1.12.0" }  (frozen)`;
+// { compiler: "1.23.0", syntax: "1.6.0", output: "1.13.0" }  (frozen)`;
 
   const noParams = [];
 
@@ -299,7 +321,12 @@ export default async function handler(request) {
     ["P048", "persist() missing arguments"], ["P049", "persist() extra arguments"],
     ["P050", "persist() key not a string literal"], ["P051", "Nested persist()"],
     ["P052", "Unparseable persist() call"], ["P053", "Expression depth budget exceeded"],
-    ["P054", "Template depth budget exceeded"], ["P055", "Expression inside a quoted attribute value"]
+    ["P054", "Template depth budget exceeded"], ["P055", "Expression inside a quoted attribute value"],
+    ["P056", "++ / -- in an expression (1.23.0+)"], ["P057", "Number or string literal a module cannot load (01, 1.foo, bad escapes)"],
+    ["P058", "Conditional missing its :"], ["P059", "Calling something other than a function name or method"],
+    ["P060", "eval, Function, constructor, __proto__, or a timer in an expression that calls"], ["P061", "Reserved word used as a name in an expression"],
+    ["P062", "Unsupported binding (property, element, input type, component tag, {#each} body, <wizz:head>)"],
+    ["P063", "Invalid binding target (not a top-level let: prop, const, member, undeclared)"], ["P064", "Binding conflicts with an explicit value / checked"]
   ].map(([code, text]) => ({ code: "WIZZ-" + code, text }));
 
   const generateCodes = [
@@ -315,7 +342,8 @@ export default async function handler(request) {
     ["G019", "Server build: unsupported head node"], ["G020", "Server build: component not server-renderable"],
     ["G021", "Void element with children"], ["G022", "Hydration: unsupported node"],
     ["G023", "Hydration: unsupported node in {#each}"], ["G024", "persist() rewrite drift (internal guard)"],
-    ["G025", "Reserved top-level, prop, or import name (__wizz…, onMount, document…)"]
+    ["G025", "Reserved top-level, prop, or import name (__wizz…, onMount, document…)"],
+    ["G026", "Warning: reactive name assigned where no update is scheduled (1.23.0+)"]
   ].map(([code, text]) => ({ code: "WIZZ-" + code, text }));
 
   function trackSheen(event) {
@@ -339,7 +367,7 @@ export default async function handler(request) {
     <main id="main" class="doc-main glass" on:pointermove={trackSheen}>
       <article class="prose">
         <header>
-          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.22.1 · syntax 1.5.1 · output 1.12.0</p>
+          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.23.0 · syntax 1.6.0 · output 1.13.0</p>
           <h1 class="rise" style="--i: 1">API Reference</h1>
           <p class="lead rise" style="--i: 2">The complete public surface: what a component script can call, what a template can express, what every compiled module exports, and the compiler, router, and server entry points behind them.</p>
         </header>
@@ -352,8 +380,9 @@ export default async function handler(request) {
         <ApiEntry anchor="export-let" name="export let" kind="prop" origin="component script" signature="export let name = defaultValue;" summary="Declares a reactive, read-only prop. Parents pass it as an attribute; updates arrive through setProps() without remounting. Assigning a prop in the child is a compile error (WIZZ-G015)." params={exportLetParams} returns="" example={exportLetExample} exampleTitle="Badge.wizz" />
 
         <h2 id="template" class="reveal">Template syntax</h2>
-        <p>Expressions in <code>{"{...}"}</code> accept identifiers, member access, string and number literals, and strict equality. Bind attributes with an unquoted expression as the whole value.</p>
+        <p>Expressions in <code>{"{...}"}</code> accept identifiers and member access; number, string, <code>true</code>/<code>false</code>/<code>null</code> literals; <code>+ - * /</code>; <code>=== !== {"< > <= >="}</code>; <code>{"&&"}</code>/<code>||</code>; unary <code>!</code>/<code>-</code>; <code>{"a ? b : c"}</code>; and calls of a script function or method (1.23.0+). Bind attributes with an unquoted expression as the whole value.</p>
         <ApiEntry anchor="on-directive" name="on:event" kind="directive" origin="native elements" signature={'<element on:event={handler}>'} summary="Attaches a native listener with addEventListener. Client-only; removed automatically when its row, branch, or component is destroyed. Allowed inside {#each} bodies with the item in scope (1.22.0+). Not allowed on component tags (WIZZ-G011) — pass a callback prop instead." params={onParams} returns="" example={onExample} exampleTitle="directives" />
+        <ApiEntry anchor="bind-directive" name="bind:value / bind:checked" kind="directive" origin="form elements" signature={'<input bind:value={name}>'} summary={"Two-way binding with a top-level let (1.23.0+): sugar for value={name} plus an on:input (on:change for select and checkboxes) handler that assigns name. Server-renders the value, hydrates, and writes persist() state through. Not on component tags or inside {#each} bodies, and props cannot be bound (WIZZ-P062 to WIZZ-P064)."} params={bindParams} returns="" example={bindExample} exampleLang="wizz" exampleTitle="FoodForm.wizz" />
         <ApiEntry anchor="if-block" name="{#if} … {:else} … {/if}" kind="block" origin="template" signature="{#if condition} … {:else} … {/if}" summary="Renders the matching branch and swaps branches in place when a reactive dependency of condition changes (1.22.0+), releasing the old branch's listeners, lists, and child components. A condition with no reactive dependencies renders once at mount." params={ifParams} returns="" example={ifExample} exampleTitle="branch" />
         <ApiEntry anchor="each-block" name="{#each} … {/each}" kind="block" origin="template" signature="{#each items as item (key)} <row /> {/each}" summary="Renders one native root element per item, inside a native parent. Elements inside the body may use on: directives with item in scope (1.22.0+). Bodies may not contain components (WIZZ-G004) or nested blocks (WIZZ-G005)." params={eachParams} returns="" example={eachExample} exampleTitle="list" />
         <ApiEntry anchor="wizz-head" name="<wizz:head>" kind="block" origin="component root" signature="<wizz:head> <title/> <meta/> <link/> </wizz:head>" summary="Per-component document metadata. Server-rendered into the head and adopted on hydration; client mounts prepend tagged nodes and destroy() releases them. Multiple titles resolve last-in-tree-wins." params={headParams} returns="" example={headExample} exampleTitle="head" />
@@ -369,7 +398,7 @@ export default async function handler(request) {
 
         <h2 id="compiler" class="reveal">Compiler API</h2>
         <p>Exported from <code>src/compiler</code> (CommonJS). Most applications never call it directly — <code>wizz build</code> and <code>wizz dev</code> do.</p>
-        <ApiEntry anchor="compile" name="compile()" kind="function" origin="src/compiler" signature="compile(source: string, options?: { filePath?, hydratable?, extractedStyles?, diagnostics? }): { source, payload, sourceMap, version, diagnostics? }" summary="Compiles a component to a mountable ES module. Errors are SyntaxErrors carrying a stable code, line, column, and (with filePath) a caret code frame." params={compileParams} returns="source (module text), payload (analyzed AST), sourceMap (v3 or null), version (frozen triple)." example={compileExample} exampleLang="js" exampleTitle="build tooling" />
+        <ApiEntry anchor="compile" name="compile()" kind="function" origin="src/compiler" signature="compile(source: string, options?: { filePath?, hydratable?, extractedStyles?, diagnostics? }): { source, payload, sourceMap, version, warnings, diagnostics? }" summary="Compiles a component to a mountable ES module. Errors are SyntaxErrors carrying a stable code, line, column, and (with filePath) a caret code frame." params={compileParams} returns="source (module text), payload (analyzed AST), sourceMap (v3 or null), version (frozen triple), warnings (WIZZ-G026 records; compileServer() does not repeat them)." example={compileExample} exampleLang="js" exampleTitle="build tooling" />
         <ApiEntry anchor="compile-server" name="compileServer()" kind="function" origin="src/compiler" signature="compileServer(source: string, options?: object): { source, payload, sourceMap: null, version }" summary="Shares the parse → analyze → assign pipeline and emits a DOM-free server module. Component tags render through each child's own server module, gated by the eligibility options." params={compileServerParams} returns="The same shape as compile(), with sourceMap always null." example={compileServerExample} exampleLang="js" exampleTitle="server target" />
         <ApiEntry anchor="versions" name="VERSIONS" kind="constant" origin="src/compiler" signature="VERSIONS: Readonly<{ compiler: string; syntax: string; output: string }>" summary="The frozen compatibility triple, also stamped on the first line of every generated module and printed by wizz --version." params={noParams} returns="" example={versionsExample} exampleLang="js" exampleTitle="versions" />
 
@@ -378,8 +407,8 @@ export default async function handler(request) {
         <ApiEntry anchor="api-handler" name="handler(request)" kind="default export" origin="src/server/api/*.js" signature="export default async function handler(request: Readonly<Request>): unknown" summary="Server-side route handler. Plain value → 200 JSON, string → text, undefined → 204, { status, headers, body } → full control, throw → fixed 500." params={handlerParams} returns="See the return-value table in Server APIs & SSR." example={handlerExample} exampleLang="js" exampleTitle="src/server/api/health.js" />
 
         <h2 id="diagnostics" class="reveal">Diagnostic codes</h2>
-        <p>Every author-facing compile failure carries a stable code. Codes are never reworded into a different meaning or reused, so tooling can switch on them. <code>WIZZ-A###</code> is reserved and empty.</p>
-        <Callout kind="tip" title="Machine-readable everywhere" body="wizz build --json, the MCP component_diagnostics tool, and compile({ diagnostics: 'collect' }) all return the same { code, severity, message, file, line, column } records." />
+        <p>Every author-facing compile failure carries a stable code. Codes are never reworded into a different meaning or reused, so tooling can switch on them. <code>WIZZ-A###</code> is reserved and empty. <code>WIZZ-G026</code> is a <strong>warning</strong> (1.23.0+): it is reported with <code>"severity": "warning"</code> and never fails a build.</p>
+        <Callout kind="tip" title="Machine-readable everywhere" body="wizz build --json, the MCP component_diagnostics tool, and compile({ diagnostics: 'collect' }) all return the same { code, severity, message, file, line, column } records. Warnings use the same shape and appear in compile().warnings and beside errors in the others." />
         <h3>Parse stage — WIZZ-P</h3>
         <div class="table-scroll">
           <table class="codes">

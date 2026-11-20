@@ -53,20 +53,22 @@
   const expressionsSource = `<script>
   let user = { name: "Ada", role: "admin" };
   let items = ["a", "b", "c"];
-
-  // Derive anything non-trivial in the script, then reference it by name.
-  let itemCount = items.length;
-  let isAdmin = user.role === "admin";
   let greeting = "Welcome back, " + user.name;
+
+  // Anything that needs a loop, an arrow, or several statements
+  // still belongs in the script; call it from the template.
+  function plural(n) { return n === 1 ? "item" : "items"; }
 <\/script>
 
 <section>
-  <h2>{greeting}</h2>                 <!-- identifier -->
-  <p>{user.name}</p>                  <!-- member access -->
-  <p>{"v1.0"} · {42}</p>               <!-- string / integer literals -->
-  <p>{itemCount + 1} after the next</p> <!-- arithmetic: + - * / ( ) -->
-  {#if user.role === "admin"}         <!-- strict equality -->
-    <p>{itemCount} items</p>
+  <h2>{greeting}</h2>                          <!-- identifier -->
+  <p>{user.name.toUpperCase()}</p>             <!-- member access, method call -->
+  <p>{"v1.0"} · {42} · {1.5}</p>                <!-- string, integer, decimal -->
+  <p>{items.length + 1} after the next</p>     <!-- arithmetic: + - * / ( ) -->
+  <p>{items.length} {plural(items.length)}</p> <!-- call a script function -->
+  <p class={user.role === "admin" ? "badge admin" : "badge"}>{user.role}</p>
+  {#if items.length > 0 && !user.banned}       <!-- comparison, &&, ! -->
+    <p>{items.length === 1 ? "One item" : items.length + " items"}</p>
   {/if}
 </section>`;
 
@@ -110,17 +112,16 @@
   ${"import"} Meter from "./Meter.wizz";
 
   let level = 40;
-  let barStyle = "transform: scaleX(0.4)";
-
-  function handleLevel(event) {
-    level = Number(event.target.value);
-    barStyle = "transform: scaleX(" + level / 100 + ")";
-  }
 <\/script>
 
 <div class="props-demo">
-  <input type="range" value={level} on:input={handleLevel} />
-  <Meter label="CPU budget" value={level} barStyle={barStyle} />
+  <input type="range" min="0" max="100" bind:value={level} />
+  <Meter
+    label="CPU budget"
+    value={level}
+    barStyle={"transform: scaleX(" + level / 100 + ")"}
+    meterClass={level > 80 ? "meter hot" : level > 55 ? "meter warm" : "meter calm"}
+  />
 </div>`;
 
   const callbackSource = `<script>
@@ -222,7 +223,9 @@ handle.destroy();                     // call exactly once`;
         </ul>
 
         <h2 id="expressions" class="reveal">Template expressions</h2>
-        <p>Curly braces accept a deliberately small, statically analyzable grammar: <strong>identifiers</strong>, <strong>member access</strong>, <strong>string and integer literals</strong>, <strong>arithmetic</strong> (<code>+ - * /</code> and parentheses, with <code>+</code> also joining strings), and <strong>strict equality</strong>. Everything else fails with <code>WIZZ-P033</code>: function calls, ternaries, <code>!</code>, <code>!==</code>, <code>{"<"}</code>/<code>{">"}</code>, <code>{"&&"}</code>/<code>||</code>, indexing, template literals, decimals, and array or object literals. Compute those in the script and reference the result by name.</p>
+        <p>Curly braces accept a statically analyzable subset of JavaScript expressions. From 1.23.0 that is: <strong>identifiers</strong> and <strong>member access</strong>; <strong>number</strong> (<code>1</code>, <code>1.5</code>), <strong>string</strong>, and <code>true</code>/<code>false</code>/<code>null</code> literals; <strong>arithmetic</strong> (<code>+ - * /</code>, with <code>+</code> also joining strings); <strong>comparisons</strong> (<code>===</code>, <code>!==</code>, <code>{"<"}</code>, <code>{">"}</code>, <code>{"<="}</code>, <code>{">="}</code>); <code>{"&&"}</code> and <code>||</code>; unary <code>!</code> and <code>-</code>; the <strong>conditional</strong> <code>{"a ? b : c"}</code>; <strong>calls</strong> of a script function or a method (<code>{"plural(n)"}</code>, <code>{"name.trim()"}</code>); and parentheses. Precedence follows JavaScript. Indexing (<code>{"a[0]"}</code>), <code>==</code>/<code>!=</code>, <code>??</code>, <code>?.</code>, <code>++</code>/<code>--</code>, template literals, arrow functions, and array or object literals still fail with <code>WIZZ-P033</code>; compute those in the script.</p>
+        <Callout kind="warn" title="A call updates through its arguments" body={"A call re-renders when a reactive name passed to it changes. {plural(items.length)} follows items; {plural()} reading items inside the function renders once and never updates. Pass the state a function needs as arguments."} />
+        <Callout kind="note" title="Upgrading from an earlier release" body={"Before 1.23.0 the grammar stopped at identifiers, member access, integer and string literals, arithmetic, and ===, so every conditional class and derived label needed its own reactive let recomputed in each handler. Those still work; inline expressions are now usually shorter. Calls cannot mention eval, Function, constructor, __proto__, setTimeout, or setInterval (WIZZ-P060)."} />
         <CodeBlock code={expressionsSource} lang="wizz" title="Expressions.wizz" />
         <p>Text output escapes <code>&</code>, <code>{"<"}</code>, and <code>{">"}</code>; attribute values additionally escape <code>"</code>. To show a literal angle bracket in prose, interpolate a string literal such as <code>{'{"<script>"}'}</code> — HTML entities are not decoded in templates.</p>
 
@@ -230,7 +233,7 @@ handle.destroy();                     // call exactly once`;
         <p>Bind an attribute by making its <strong>entire, unquoted value</strong> an expression: <code>{"class={cardClass}"}</code> or <code>{"class={'card ' + state}"}</code>. <code>value</code>, <code>checked</code>, and <code>disabled</code> update as DOM properties. From 1.21.0, HTML boolean attributes such as <code>hidden</code>, <code>required</code>, <code>readonly</code>, <code>open</code>, and <code>inert</code> are added when the value is truthy and removed when it is falsy, so <code>{"hidden={isValid}"}</code> shows the element while <code>isValid</code> is <code>false</code>. Any other attribute is removed when its value is <code>null</code> or <code>undefined</code>. Outside that list, <code>false</code> still renders the text <code>"false"</code>, which keeps <code>{"aria-expanded={open}"}</code> correct. Server rendering and hydration follow the same rules. Before 1.21.0, every other name was written as <code>setAttribute(name, String(value))</code> and never removed, so <code>{"hidden={false}"}</code> still hid the element; on those compilers, toggle presence with a bound class and CSS.</p>
         <CodeBlock code={attributesSource} lang="wizz" title="Attributes.wizz" />
         <Callout kind="warn" title="Quoted values are static" body={'class="card {state}" or href="{url}" fail to compile with WIZZ-P055 (from 1.22.1; older compilers rendered those characters literally with no diagnostic). Bind the whole value unquoted: class={cardClass} or class={"card " + state}.'} />
-        <Callout kind="note" title="There is no bind:" body={'bind:value={name} is not a directive: it compiles to a plain attribute named bind:value. Pair value={name} with an on:input handler instead.'} />
+        <Callout kind="tip" title="Two-way form inputs" body={"From 1.23.0, bind:value={name} and bind:checked={done} keep a form control and a let in sync; see State & Reactivity → Two-way bindings. Before 1.23.0, bind:value compiled to a plain attribute named bind:value."} />
 
         <h2 id="props" class="reveal">Props</h2>
         <p>A child declares inputs with <code>export let</code>. The parent passes them as attributes on the component tag: static attributes pass strings, bare attributes pass <code>true</code>, and <code>{"{expressions}"}</code> pass values that re-evaluate whenever their dependencies change.</p>
@@ -296,7 +299,10 @@ handle.destroy();                     // call exactly once`;
               <tr><td>No <code>on:</code> on component tags</td><td>Pass a callback prop</td><td><code>WIZZ-G011</code></td></tr>
               <tr><td>Component tags inside a native element</td><td>Wrap the tag</td><td><code>WIZZ-G010</code></td></tr>
               <tr><td>Props are read-only</td><td>Copy into a local <code>let</code></td><td><code>WIZZ-G015</code></td></tr>
-              <tr><td>No calls or ternaries in <code>{"{...}"}</code></td><td>Compute in the script</td><td><code>WIZZ-P033</code></td></tr>
+              <tr><td>No indexing, <code>==</code>, <code>??</code>, <code>?.</code>, or arrow functions in <code>{"{...}"}</code></td><td>Compute in the script, or call a script function</td><td><code>WIZZ-P033</code></td></tr>
+              <tr><td>No <code>++</code>/<code>--</code> or code-from-string sinks in <code>{"{...}"}</code></td><td>Mutate in a handler</td><td><code>WIZZ-P056</code> / <code>P060</code></td></tr>
+              <tr><td><code>bind:value</code> on <code>{"<input>"}</code>, <code>{"<textarea>"}</code>, <code>{"<select>"}</code>; <code>bind:checked</code> on checkboxes</td><td><code>value={"{...}"}</code> + <code>on:input</code></td><td><code>WIZZ-P062</code></td></tr>
+              <tr><td>A binding names a top-level <code>let</code></td><td>Copy a prop into a local <code>let</code></td><td><code>WIZZ-P063</code></td></tr>
               <tr><td>No <code>{"{:else if}"}</code></td><td>Nest <code>{"{#if}"}</code> inside <code>{"{:else}"}</code></td><td><code>WIZZ-P033</code></td></tr>
               <tr><td>{"{#each}"} names a bare collection, no index alias</td><td>Copy into a top-level <code>let</code>; store indexes on items</td><td><code>WIZZ-P002</code></td></tr>
               <tr><td>{"{#each}"} inside a native element</td><td>Wrap the block</td><td><code>WIZZ-G002</code></td></tr>

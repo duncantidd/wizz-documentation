@@ -2,20 +2,11 @@
   import Meter from "./Meter.wizz";
 
   let level = 40;
-  let barStyle = "transform: scaleX(0.4)";
-  let meterClass = "meter calm";
   let label = "CPU budget";
   let updates = 0;
 
-  function handleLevel(event) {
-    level = Number(event.target.value);
-    barStyle = "transform: scaleX(" + level / 100 + ")";
-    meterClass = "meter " + (level > 80 ? "hot" : level > 55 ? "warm" : "calm");
-    updates += 1;
-  }
-
-  function handleLabel(event) {
-    label = event.target.value;
+  // The bindings own level and label; this only counts the edits.
+  function countUpdate() {
     updates += 1;
   }
 </script>
@@ -25,15 +16,20 @@
   <div class="controls">
     <label class="field">
       <span>value prop</span>
-      <input type="range" min="0" max="100" value={level} on:input={handleLevel} />
+      <input type="range" min="0" max="100" bind:value={level} on:input={countUpdate} />
     </label>
     <label class="field">
       <span>label prop</span>
-      <input type="text" value={label} on:input={handleLabel} />
+      <input type="text" bind:value={label} on:input={countUpdate} />
     </label>
   </div>
   <div class="child">
-    <Meter label={label} value={level} barStyle={barStyle} meterClass={meterClass} />
+    <Meter
+      label={label}
+      value={level}
+      barStyle={"transform: scaleX(" + level / 100 + ")"}
+      meterClass={level > 80 ? "meter hot" : level > 55 ? "meter warm" : "meter calm"}
+    />
   </div>
 </div>
 

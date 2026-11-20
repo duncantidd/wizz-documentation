@@ -2,7 +2,7 @@
 
 > Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
 
-Versions covered: compiler 1.22.1, syntax 1.5.1, output 1.12.0 (`wizz --version`).
+Versions covered: compiler 1.23.0, syntax 1.6.0, output 1.13.0 (`wizz --version`).
 Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
 
 Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
@@ -78,31 +78,36 @@ A `.wizz` file is one component: a template with exactly one native root element
 
 ## 3. Template expressions
 
-`{...}` accepts ONLY:
+`{...}` accepts a JavaScript expression subset (compiler 1.23.0+; precedence follows JavaScript):
 
-1. Identifiers: `{title}`
-2. Member access: `{user.profile.name}`
-3. String and integer literals: `{"v1.0"}`, `{42}` (no decimals: `{1.5}` fails)
-4. Arithmetic `+ - * /` and parentheses: `{(count + 1) * 2}`, `{"card " + kind}` (`+` also concatenates strings)
-5. Strict equality: `{role === "admin"}` (mainly in `{#if}`)
+1. Identifiers and member access: `{title}`, `{user.profile.name}`
+2. Literals: `{"v1.0"}`, `{42}`, `{1.5}`, `{true}`, `{null}`
+3. Arithmetic `+ - * /` and parentheses: `{(count + 1) * 2}`, `{"card " + kind}` (`+` also concatenates strings)
+4. Comparisons: `===`, `!==`, `<`, `>`, `<=`, `>=`
+5. Logic and unary: `&&`, `||`, `!`, `-`
+6. The conditional: `{count === 1 ? "item" : "items"}`, nestable
+7. Calls of a script function or a method: `{plural(items.length)}`, `{name.trim().toUpperCase()}`
 
-Everything else fails with WIZZ-P033: function calls, ternaries, `!`, `!==`, `<`/`>`, `&&`, `||`, indexing (`a[0]`), array methods, template literals, and array/object literals. There are no booleans either: compute them in the script.
+Still WIZZ-P033: indexing (`a[0]`), `==`/`!=`, `??`, `?.`, template literals, arrow functions, array/object literals, and calling a call result (`f()()`, WIZZ-P059). `++`/`--` are WIZZ-P056. An expression that calls may not mention `eval`, `Function`, `constructor`, `__proto__`, `setTimeout`, or `setInterval` (WIZZ-P060).
+
+A call re-renders only when a reactive name passed to it changes: `{plural(items.length)}` follows `items`; `{plural()}` reading `items` inside the function renders once. Anything that needs a loop, an arrow, or statements stays in the script.
+
+Before 1.23.0 the grammar was only identifiers, member access, integer and string literals, arithmetic, and `===`; on older compilers compute everything else in the script.
 
 ```html
 <script>
   let user = { name: "Ada", role: "admin" };
   let items = ["a", "b", "c"];
 
-  // Derive everything in the script, then reference it by name.
-  let itemCount = items.length;
   let greeting = "Welcome back, " + user.name;
+  function plural(n) { return n === 1 ? "item" : "items"; }
 </script>
 
 <section>
   <h2>{greeting}</h2>
-  <p>{user.name}</p>
-  {#if user.role === "admin"}
-    <p>{itemCount} items</p>
+  <p class={user.role === "admin" ? "badge admin" : "badge"}>{user.name}</p>
+  {#if items.length > 0 && user.role === "admin"}
+    <p>{items.length} {plural(items.length)}</p>
   {/if}
 </section>
 ```
@@ -135,7 +140,7 @@ Bind an attribute by making its ENTIRE, UNQUOTED value an expression.
 - `value`, `checked`, and `disabled` update as DOM properties.
 - From 1.21.0, HTML boolean attributes (`hidden`, `required`, `readonly`, `open`, `inert`, `multiple`, `selected`, `autofocus`, and the rest of the HTML list) are present when the value is truthy and removed when it is falsy: `hidden={isValid}` shows the element while `isValid` is `false`. Any other dynamic attribute is removed for `null`/`undefined` and otherwise set to `String(value)`, so `false` renders `"false"` and `aria-expanded={open}` stays correct. To drop a non-boolean attribute, hold `null` in state. Server rendering and hydration follow the same rules.
 - Before 1.21.0, every name other than `value`/`checked`/`disabled` was written with `setAttribute(name, String(value))` and never removed: `hidden={false}` still hid the element and `undefined` rendered as `"undefined"`. On those compilers, toggle presence with a bound class and CSS.
-- There is no `bind:`. `bind:value={name}` silently becomes a plain attribute. Pair `value={name}` with an `on:input` handler (section 8).
+- Two-way inputs: `bind:value={name}` / `bind:checked={done}` (1.23.0+, section 8). Before 1.23.0, `bind:value` silently became a plain attribute; pair `value={name}` with an `on:input` handler there.
 
 ---
 
@@ -248,11 +253,11 @@ onMount(() => { ready = true; });
 
 // NOT tracked
 items.push(next);                 // method call: reassign the array instead
-log(count = 5);                   // assignment inside an expression
-if (done) status = "ok";          // unbraced body: add braces
+log(count = 5);                   // assignment inside an expression: warning WIZZ-G026
+if (done) status = "ok";          // unbraced body: add braces (warning WIZZ-G026)
 ```
 
-The same rules apply to inline `on:` handlers from compiler 1.17.1: `on:input={(e) => name = e.target.value}` is tracked, while `on:click={() => ok ? a = 1 : 0}` is not (the assignment sits inside an expression). Releases before 1.17.1 did not track assignments written directly in an inline handler; if `wizz --version` reports an older compiler, run `wizz update`.
+The same rules apply to inline `on:` handlers from compiler 1.17.1: `on:input={(e) => name = e.target.value}` is tracked, and from 1.23.0 so is the parenthesized `on:input={(e) => (name = e.target.value)}`, while `on:click={() => ok ? a = 1 : 0}` is not (the assignment sits inside an expression). From 1.23.0 every untracked assignment of a reactive name, in the script or a handler, is reported as warning WIZZ-G026 with its location; warnings never fail a build. Releases before 1.17.1 did not track assignments written directly in an inline handler; if `wizz --version` reports an older compiler, run `wizz update`.
 
 - Use `const` for locals inside helper functions: the state scanner treats `let` declarations as component state.
 - Reactive names may not be `__proto__` or start with `__wizz` (WIZZ-G017).
@@ -293,7 +298,22 @@ onMount(recompute);
 </form>
 ```
 
-- Assignments inside an inline arrow or `function` handler update the DOM like assignments in script functions (compiler 1.17.1 and later). Write each mutation as its own statement.
+- Assignments inside an inline arrow or `function` handler update the DOM like assignments in script functions (compiler 1.17.1 and later; the parenthesized `(e) => (x = ...)` form from 1.23.0). Write each mutation as its own statement.
+
+### Two-way bindings (1.23.0+)
+
+```html
+<input bind:value={food} />
+<input type="number" bind:value={calories} />   <!-- number; empty field: null -->
+<input type="checkbox" bind:checked={logged} />
+<select bind:value={meal}>...</select>
+```
+
+- `bind:value` works on `<input>` (not checkbox, radio, or file), `<textarea>`, and `<select>`; `bind:checked` on `<input type="checkbox">`.
+- It is sugar for `value={x}` plus an `on:input` (`on:change` for select and checkbox) handler that assigns `x`: it server-renders, hydrates, works inside `{#if}`, and writes `persist()` state through.
+- The target must be a top-level `let` named directly (WIZZ-P063): not a prop, `const`, or `user.name`. A bound `<input>` needs a static `type`.
+- Not on component tags, inside `{#each}` bodies, or `<wizz:head>`, and no `bind:group`/`bind:this` (WIZZ-P062). An explicit `value`/`checked` beside the binding is WIZZ-P064. Use `value={...}` + `on:input` there.
+- A server-rendered `<textarea>`/`<select>` shows its bound value after hydration.
 - An inline handler that assigns a prop is WIZZ-G015, the same as in the script (1.17.1 and later).
 - Native elements only: never on component tags (WIZZ-G011). From 1.22.0, `on:` directives work inside `{#each}` bodies with the row's item binding in scope (`on:click={() => remove(item.id)}`); before 1.22.0 they failed with WIZZ-G006.
 - Handlers are client-only. Server rendering skips them; hydration attaches them.
@@ -536,7 +556,10 @@ Most common:
 | WIZZ-G001 | Template has no root element | Wrap content in one native element |
 | WIZZ-P013 / P014 | Duplicate `<wizz:head>` / `<wizz:style>` | Merge the blocks |
 | WIZZ-P020 | Plain `<style>` | Use `<wizz:style>` |
-| WIZZ-P033 | Template expression error (call, ternary, etc.) | Compute in the script |
+| WIZZ-P033 | Template expression error (indexing, `==`, `??`, arrow functions, ...) | Compute in the script or call a script function |
+| WIZZ-P056 / P060 | `++`/`--`, or a code-from-string sink, in an expression | Mutate in a handler |
+| WIZZ-P062 / P063 / P064 | Unsupported binding / invalid binding target / conflicting attribute | `value={...}` + `on:input`, or bind a top-level `let` |
+| WIZZ-G026 (warning) | Reactive name assigned where no update is scheduled | Make the assignment its own statement; brace `if` bodies |
 | WIZZ-G002 | `{#each}` outside a native element | Wrap the block |
 | WIZZ-G003 | `{#each}` body needs one root element | Wrap the row |
 | WIZZ-G004 | Component inside `{#each}` | Native markup in rows |
@@ -548,9 +571,9 @@ Most common:
 | WIZZ-G015 | Assignment to a prop | Copy into a local `let` |
 | WIZZ-G016 | Imports not on their own lines | One import per line |
 
-Parse stage (WIZZ-P): P001 tokenizer error · P002 malformed `{#each}` · P003 unexpected `{/each}` · P004 unexpected `{/if}` · P005 unexpected `{:else}` · P006 disallowed child in `<title>` · P007 disallowed element in `<wizz:head>` · P008 element in `<wizz:style>` · P009 attributes on `<wizz:head>` · P010 nested `<wizz:head>` · P011 attributes on `<wizz:style>` · P012 nested `<wizz:style>` · P013 duplicate `<wizz:head>` · P014 duplicate `<wizz:style>` · P015 block directive in `<wizz:head>` · P016 expression directly in `<wizz:head>` · P017 expression in `<wizz:style>` · P018 mismatched closing tag · P019 only title/meta/link in head · P020 plain `<style>` · P021 closing tag on void element · P022 unclosed tag · P023 unexpected closing tag · P024 unsupported token · P025 unclosed string in expression · P026 unexpected character in expression · P027 unparseable expression start · P028 expected `)` · P029 expected property after `.` · P030 unexpected expression token · P031 missing `{#if}` condition · P032 dynamic attribute missing expression · P033 template expression error · P034 invalid prop name · P035 reserved prop prefix `__wizz` · P036 `export let` without a name · P037 `export` not at top level · P038 one prop per `export let` · P039 invalid prop declaration · P040 duplicate prop · P041 prop missing value · P042 prop missing semicolon · P043 unsupported export syntax · P044 `persist()` on a prop · P045 `persist()` on a const · P046 `persist()` not top level · P047 statements trailing a `persist()` declaration · P048 `persist()` missing arguments · P049 `persist()` extra arguments · P050 `persist()` key not a string literal · P051 nested `persist()` · P052 unparseable `persist()` call · P053 expression depth budget exceeded · P054 template depth budget exceeded · P055 interpolation inside a quoted attribute value (1.22.1+).
+Parse stage (WIZZ-P): P001 tokenizer error · P002 malformed `{#each}` · P003 unexpected `{/each}` · P004 unexpected `{/if}` · P005 unexpected `{:else}` · P006 disallowed child in `<title>` · P007 disallowed element in `<wizz:head>` · P008 element in `<wizz:style>` · P009 attributes on `<wizz:head>` · P010 nested `<wizz:head>` · P011 attributes on `<wizz:style>` · P012 nested `<wizz:style>` · P013 duplicate `<wizz:head>` · P014 duplicate `<wizz:style>` · P015 block directive in `<wizz:head>` · P016 expression directly in `<wizz:head>` · P017 expression in `<wizz:style>` · P018 mismatched closing tag · P019 only title/meta/link in head · P020 plain `<style>` · P021 closing tag on void element · P022 unclosed tag · P023 unexpected closing tag · P024 unsupported token · P025 unclosed string in expression · P026 unexpected character in expression · P027 unparseable expression start · P028 expected `)` · P029 expected property after `.` · P030 unexpected expression token · P031 missing `{#if}` condition · P032 dynamic attribute missing expression · P033 template expression error · P034 invalid prop name · P035 reserved prop prefix `__wizz` · P036 `export let` without a name · P037 `export` not at top level · P038 one prop per `export let` · P039 invalid prop declaration · P040 duplicate prop · P041 prop missing value · P042 prop missing semicolon · P043 unsupported export syntax · P044 `persist()` on a prop · P045 `persist()` on a const · P046 `persist()` not top level · P047 statements trailing a `persist()` declaration · P048 `persist()` missing arguments · P049 `persist()` extra arguments · P050 `persist()` key not a string literal · P051 nested `persist()` · P052 unparseable `persist()` call · P053 expression depth budget exceeded · P054 template depth budget exceeded · P055 interpolation inside a quoted attribute value (1.22.1+) · P056 `++`/`--` in an expression · P057 number or string literal a module cannot load · P058 conditional missing `:` · P059 calling something other than a name or method · P060 code-from-string sink in an expression that calls · P061 reserved word as a name · P062 unsupported binding · P063 invalid binding target · P064 conflicting binding (P056–P064: 1.23.0+).
 
-Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native element · G003 `{#each}` body needs one root · G004 component in `{#each}` · G005 unsupported node in `{#each}` (nested blocks) · G006 retired in 1.22.0 (was: `on:` in `{#each}`) · G007 invalid prop attribute name · G008 children on component tag · G009 component missing id (internal) · G010 component tag outside native element · G011 `on:` on component tag · G012 event directive missing handler · G013 invalid event directive · G014 disallowed child in `<title>` · G015 assignment to a prop · G016 imports must be on their own lines · G017 reserved reactive name · G018 server build: unsupported node · G019 server build: unsupported head node · G020 server build: component not server-renderable · G021 void element with children · G022 hydration: unsupported node · G023 hydration: unsupported node in `{#each}` · G024 `persist()` rewrite drift (internal) · G025 reserved top-level, prop, or import name.
+Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native element · G003 `{#each}` body needs one root · G004 component in `{#each}` · G005 unsupported node in `{#each}` (nested blocks) · G006 retired in 1.22.0 (was: `on:` in `{#each}`) · G007 invalid prop attribute name · G008 children on component tag · G009 component missing id (internal) · G010 component tag outside native element · G011 `on:` on component tag · G012 event directive missing handler · G013 invalid event directive · G014 disallowed child in `<title>` · G015 assignment to a prop · G016 imports must be on their own lines · G017 reserved reactive name · G018 server build: unsupported node · G019 server build: unsupported head node · G020 server build: component not server-renderable · G021 void element with children · G022 hydration: unsupported node · G023 hydration: unsupported node in `{#each}` · G024 `persist()` rewrite drift (internal) · G025 reserved top-level, prop, or import name · G026 warning: reactive name assigned where no update is scheduled (1.23.0+).
 
 ---
 
@@ -558,10 +581,10 @@ Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native e
 
 | You might write | Wizz.js equivalent |
 | --- | --- |
-| `{items.length}`, `{fmt(x)}`, `{a ? b : c}`, `{a && b}` | Compute `let count = items.length;` in `<script>`, render `{count}` |
+| `{items[0]}`, `{list.map(...)}`, `{a ?? b}` | Compute in `<script>` and render the name, or call a script function: `{first(items)}` (1.23.0+) |
 | `class="btn {variant}"` | `class={"btn " + variant}`, or `let btnClass = "btn " + variant;` then `class={btnClass}` |
-| `hidden={!open}` | `!` is not in the expression grammar: compute `let closed = !open;` in the handler and write `hidden={closed}` (1.21.0+ removes the attribute when falsy; on older compilers bind a class and hide with CSS) |
-| `bind:value={name}` / `v-model` | `value={name}` plus `on:input={(e) => name = e.target.value}` (1.17.1+) or a named handler |
+| `hidden={!open}` | Valid from 1.23.0 (1.21.0+ removes the attribute when falsy). Before 1.23.0, compute `let closed = !open;` and write `hidden={closed}` |
+| `v-model` / `bind:value` on a component or in `{#each}` | `bind:value={name}` on a native `<input>`/`<textarea>`/`<select>` (1.23.0+); in rows or on components, `value={...}` plus an `on:input` handler |
 | `{:else if b}` | Nest `{#if b}` inside `{:else}` |
 | `<Card><p>Body</p></Card>` / `<slot>` | `<Card body="..." />` or compose native elements around the tag |
 | `<Child on:save={fn} />` / `@save` / `onSave` event emit | Callback prop: `<Child onSave={fn} />`, child calls `onSave(value)` |

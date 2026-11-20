@@ -100,7 +100,9 @@
   function runSearch() {
     const terms = query.toLowerCase().trim().split(/\s+/).filter(Boolean);
     matches = INDEX.filter((entry) => terms.every((term) => entry.haystack.includes(term))).slice(0, 9);
-    if (activeIndex >= matches.length) activeIndex = 0;
+    if (activeIndex >= matches.length) {
+      activeIndex = 0;
+    }
     results = matches.map((entry, index) => ({
       ...entry,
       position: String(index),
@@ -245,7 +247,9 @@
   onMount(() => {
     syncTheme();
     syncSidebar();
-    if (window.matchMedia("(max-width: 56rem)").matches) menuExpanded = "false";
+    if (window.matchMedia("(max-width: 56rem)").matches) {
+      menuExpanded = "false";
+    }
     runSearch();
     window.addEventListener("keydown", handleGlobalKeys);
     document.addEventListener("click", handleOutsideClick);
@@ -267,7 +271,7 @@
     <a class="brand" href="/" aria-label="Wizz.js home">
       <span class="mark" aria-hidden="true">W</span>
       <span class="word">Wizz<span class="dot">.js</span></span>
-      <span class="ver">1.22</span>
+      <span class="ver">1.23</span>
     </a>
     <ul class="links">{#each links as link (link.id)}<li><a class={link.linkClass} href={link.href} aria-current={link.current}>{link.label}</a></li>{/each}</ul>
     <div class="actions">

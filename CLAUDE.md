@@ -62,13 +62,16 @@ Consult `.skills/wizz/README.md` and its 4 sub-guides before writing `.wizz` fil
   - Every `.wizz` template must have **exactly one native HTML element** at its root (e.g. `<main>`, `<div class="...">`, `<section>`). Top-level sibling elements are a compile error.
   - Each `.wizz` file may contain at most **one** `<script>`, **one** `<wizz:head>`, and **one** `<wizz:style>` block.
 - **Safe Template Expressions Only**:
-  - `{...}` interpolations only allow:
-    1. Identifiers (`{title}`)
-    2. Member access chains (`{doc.section.title}`)
-    3. String or integer literals (`{"v1.0"}`, `{42}`)
-    4. Arithmetic `+ - * /` and parentheses (`{count + 1}`, `{"card " + kind}`)
-    5. Strict equality comparisons (`{activeTab === "api"}`)
-  - **FORBIDDEN in `{...}`**: Function calls (`{format(x)}`), ternaries (`{a ? b : c}`), `!`/`!==`/`<`/`>`, logical operators (`{a && b}`), indexing (`{a[0]}`), or array methods (`{list.map(...)}`). **Precompute anything beyond simple arithmetic in `<script>`**.
+  - `{...}` interpolations allow (Wizz 1.23.0+):
+    1. Identifiers and member access chains (`{title}`, `{doc.section.title}`)
+    2. Number, string, `true`/`false`/`null` literals (`{"v1.0"}`, `{42}`, `{1.5}`)
+    3. Arithmetic `+ - * /` and parentheses (`{count + 1}`, `{"card " + kind}`)
+    4. Comparisons `=== !== < > <= >=`, `&&`/`||`, unary `!`/`-`
+    5. The conditional (`{activeTab === "api" ? "tab is-active" : "tab"}`)
+    6. Calls of a script function or method (`{plural(count)}`, `{name.trim()}`); a call re-renders only when a reactive name passed to it changes
+  - **FORBIDDEN in `{...}`**: indexing (`{a[0]}`), `==`/`!=`, `??`, `?.`, `++`/`--`, template literals, arrow functions, array or object literals. Compute those in `<script>`.
+  - **Two-way inputs**: `bind:value={name}` on `<input>`/`<textarea>`/`<select>` and `bind:checked={done}` on checkboxes, with a top-level `let`. Not on component tags or inside `{#each}` bodies.
+  - **Warnings**: an assignment nested in an expression or an unbraced `if` body is warning `WIZZ-G026` and does not update the DOM. Builds must stay warning-free: make each assignment its own statement and brace control-flow bodies.
 - **Component Imports & Composition**:
   - Use default imports only: `import Counter from "./components/Counter.wizz";`
   - Render imported components as **self-closing tags** inside a native DOM parent: `<Counter showReset={true} />`.
@@ -84,11 +87,11 @@ Consult `.skills/wizz/README.md` and its 4 sub-guides before writing `.wizz` fil
   - **Branching**: `{#if condition} ... {:else} ... {/if}` uses safe expressions (or precomputed booleans) and re-evaluates whenever a reactive `let` or prop read by `condition` changes, swapping branches in place.
   - **`{#each}` 4 Strict Constraints**:
     1. Must be immediately enclosed inside a native HTML element (`<ul>`, `<div>`, `<nav>`).
-    2. Loop body must have **exactly one native root element** (`<li data-id="{item.id}">...</li>`).
+    2. Loop body must have **exactly one native root element** (`<li data-id={item.id}>...</li>`).
     3. Iterated collection must be a top-level reactive `let` variable.
     4. Loop body **MUST NOT** contain imported components (`WIZZ-G004`) or nested `{#if}` / `{#each}` blocks (`WIZZ-G005`). (`on:<event>` directives inside `{#each}` bodies are supported in Wizz 1.22.0+ with the item variable in scope.)
   - **List Interactions**: Use `on:click={() => handleRow(item.id)}` on native elements inside `{#each}` (1.22.0+), or attach `on:click={handleListClick}` to the parent container outside `{#each}` and resolve the clicked item via `event.target.closest('[data-id]')`.
-  - **List Conditionals via Precomputation**: Precompute active classes/labels inside `<script>` (e.g. `item.activeClass = item.id === currentId ? "is-active" : ""`) and bind it unquoted: `class={"nav-item " + item.activeClass}` inside `{#each}`. A quoted `class="nav-item {item.activeClass}"` fails with WIZZ-P055 (1.22.1+; older compilers rendered the braces literally).
+  - **List Conditionals**: Write per-row classes inline (`class={item.id === currentId ? "nav-item is-active" : "nav-item"}`, 1.23.0+) or precompute them inside `<script>` (`item.activeClass = ...`) and bind unquoted: `class={"nav-item " + item.activeClass}`. Row text and attributes refresh when the collection is reassigned, so a row that reads outer state such as `currentId` needs the collection rebuilt after it changes. A quoted `class="nav-item {item.activeClass}"` fails with WIZZ-P055 (1.22.1+; older compilers rendered the braces literally).
 
 ### 3. Routing, Server APIs & Styling Conventions
 - **Pages & Routing**:
