@@ -6,10 +6,6 @@
   let latency = "—";
   let controller = null;
 
-  function handleName(event) {
-    name = event.target.value;
-  }
-
   async function callApi(event) {
     event.preventDefault();
     if (controller) controller.abort();
@@ -44,7 +40,7 @@
     <label class="field">
       <span class="visually-hidden">Name</span>
       <span class="prefix">GET /api/greet?name=</span>
-      <input type="text" value={name} on:input={handleName} spellcheck="false" />
+      <input type="text" bind:value={name} spellcheck="false" />
     </label>
     <button type="submit" class="send">Call /api/greet</button>
   </form>

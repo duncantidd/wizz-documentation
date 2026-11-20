@@ -37,7 +37,7 @@ curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/ins
 # From a clone of the repository
 ./scripts/install-cli.sh            # latest release
 ./scripts/install-cli.sh --local    # the working tree (developing Wizz itself)
-./scripts/install-cli.sh ./wizz-1.22.1.tgz   # a specific tarball (path or URL)`;
+./scripts/install-cli.sh ./wizz-1.23.0.tgz   # a specific tarball (path or URL)`;
 
   const uninstallCmd = `rm -f "\${XDG_BIN_HOME:-$HOME/.local/bin}/wizz"
 rm -rf "\${XDG_DATA_HOME:-$HOME/.local/share}/wizz"`;
@@ -73,6 +73,22 @@ wizz build --adapter=node --json`;
   "files": [{ "file": "App.wizz", "serverRenderable": true }]
 }`;
 
+  const jsonWarning = `{
+  "format": "wizz-build-diagnostics@1",
+  "ok": true,
+  "diagnostics": [
+    {
+      "code": "WIZZ-G026",
+      "severity": "warning",
+      "message": "'count' is assigned where the update scheduler does not see it, so the DOM will not update at App.wizz:6:21. ...",
+      "file": "App.wizz",
+      "line": 6,
+      "column": 21
+    }
+  ],
+  "files": [{ "file": "App.wizz", "serverRenderable": true }]
+}`;
+
   const ciScript = `# CI gate: fail on any diagnostic and print the codes
 wizz build --json > build.json || true
 node -e '
@@ -95,7 +111,7 @@ wizz mcp --root /path/to/project --allow-write   # enable compile-gated writes`;
 # without the CLI
 code --install-extension wizz-vscode-<version>.vsix`;
   const versionCmd = `wizz --version
-# wizz 1.22.1 (compiler 1.22.1, syntax 1.5.1, output 1.12.0)`;
+# wizz 1.23.0 (compiler 1.23.0, syntax 1.6.0, output 1.13.0)`;
 </script>
 
 <wizz:head>
@@ -152,12 +168,14 @@ code --install-extension wizz-vscode-<version>.vsix`;
         </ul>
 
         <h2 id="build" class="reveal">wizz build</h2>
-        <p>Compiles every <code>.wizz</code> file (continuing past failures so you see them all), writes the route and API manifests, copies the runtime, the shell, <code>App.css</code>, and <code>src/server/</code>, extracts scoped CSS into <code>dist/wizz.css</code>, and writes <code>dist/package.json</code> as <code>{'{"type":"module"}'}</code>. Exits non-zero if any component fails.</p>
+        <p>Compiles every <code>.wizz</code> file (continuing past failures so you see them all), writes the route and API manifests, copies the runtime, the shell, <code>App.css</code>, and <code>src/server/</code>, extracts scoped CSS into <code>dist/wizz.css</code>, and writes <code>dist/package.json</code> as <code>{'{"type":"module"}'}</code>. Exits non-zero if any component fails. Warnings (1.23.0+, such as <code>WIZZ-G026</code> for an assignment the update scheduler cannot see) print as <code>Warning WIZZ-G026: …</code> after the file's <code>Compiled</code> line and never fail the build; <code>wizz dev</code> prints them on every rebuild.</p>
         <CodeBlock code={buildCmd} lang="bash" title="terminal" />
 
         <h3 id="json" class="reveal">--json diagnostics</h3>
         <p><code>--json</code> (any position) prints a versioned envelope to stdout instead of prose. Fields may be added within format version 1; existing fields keep their meaning.</p>
         <CodeBlock code={jsonFailure} lang="json" title="wizz build --json" />
+        <p>Warnings travel in the same <code>diagnostics</code> array with <code>"severity": "warning"</code>, and <code>ok</code> stays <code>true</code> when a build has only warnings. Filter on <code>severity</code> if your gate should fail on errors only.</p>
+        <CodeBlock code={jsonWarning} lang="json" title="a build with a warning" />
         <CodeBlock code={ciScript} lang="bash" title="ci.sh" />
 
         <h3 id="adapter" class="reveal">--adapter node</h3>

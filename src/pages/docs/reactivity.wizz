@@ -13,6 +13,7 @@
     { id: "batching", label: "Microtask batching" },
     { id: "mutations", label: "Which mutations are tracked" },
     { id: "events", label: "Event handling" },
+    { id: "bindings", label: "Two-way bindings" },
     { id: "lists", label: "Lists with {#each}" },
     { id: "todo-demo", label: "Live: keyed todo list", depth: 3 },
     { id: "conditionals", label: "Conditional rendering" },
@@ -67,12 +68,13 @@ onMount(() => { ready = true; });
 
 // Not tracked: method calls, expression positions, unbraced bodies
 items.push(next);                 // no assignment: reassign the array instead
-log(count = 5);                   // assignment inside a call argument
-if (done) status = "ok";          // unbraced control-flow body: add braces
+log(count = 5);                   // warning WIZZ-G026: inside a call argument
+if (done) status = "ok";          // warning WIZZ-G026: add braces
 
-// Inline on: handlers follow the same rules (compiler 1.17.1 and later)
-// on:input={(e) => name = e.target.value}    tracked
-// on:click={() => ok ? a = 1 : 0}            not tracked: inside an expression`;
+// Inline on: handlers follow the same rules
+// on:input={(e) => name = e.target.value}      tracked
+// on:input={(e) => (name = e.target.value)}    tracked (1.23.0+)
+// on:click={() => ok ? a = 1 : 0}              warning WIZZ-G026`;
 
   const eventSource = `<script>
   let query = "";
@@ -142,18 +144,34 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
 
   const toggleSource = `<script>
   let open = false;
-  let closed = true;
 
   function toggle() {
     open = !open;
-    closed = !open;
   }
 <\/script>
 
 <section class="disclosure">
   <button on:click={toggle} aria-expanded={open}>Details</button>
-  <div class="panel" hidden={closed}>Kept in the DOM while hidden, preserving internal state.</div>
+  <div class="panel" hidden={!open}>Kept in the DOM while hidden, preserving internal state.</div>
 </section>`;
+
+  const bindSource = `<script>
+  let food = "";
+  let calories = 0;
+  let logged = false;
+  let meal = "lunch";
+<\/script>
+
+<form class="food">
+  <input bind:value={food} placeholder="Food" />
+  <input type="number" bind:value={calories} />
+  <label><input type="checkbox" bind:checked={logged} /> Logged</label>
+  <select bind:value={meal}>
+    <option value="lunch">Lunch</option>
+    <option value="dinner">Dinner</option>
+  </select>
+  <p>{food === "" ? "Nothing yet" : food + ": " + calories + " kcal"}{logged ? " (logged)" : ""}</p>
+</form>`;
 
   const persistSource = `<script>
   let theme = persist("theme", "light");
@@ -170,12 +188,10 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
   const derivedSource = `<script>
   let items = [];
   let total = 0;
-  let summary = "Cart is empty";
 
   // One function owns every derived value; call it after each change.
   function recompute() {
     total = items.reduce((sum, item) => sum + item.price, 0);
-    summary = items.length === 0 ? "Cart is empty" : items.length + " items";
   }
 
   function add(item) {
@@ -184,7 +200,10 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
   }
 
   onMount(recompute);   // also after hydration restores persisted state
-<\/script>`;
+<\/script>
+
+<!-- A value one expression can say needs no let at all (1.23.0+). -->
+<p>{items.length === 0 ? "Cart is empty" : items.length + " items"} · {total}</p>`;
 </script>
 
 <wizz:head>
@@ -214,8 +233,9 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
         <Callout kind="note" title="Testing tip" body="Read the DOM after an await (for example await Promise.resolve()), not synchronously after dispatching an event — the update has not run yet." />
 
         <h2 id="mutations" class="reveal">Which mutations are tracked</h2>
-        <p>A syntax-aware rewriter inserts the scheduler call after <strong>statement-level</strong> mutations, following them into function and arrow callback bodies. Mutations in expression positions are deliberately left alone.</p>
+        <p>A syntax-aware rewriter inserts the scheduler call after <strong>statement-level</strong> mutations, following them into function and arrow callback bodies. Mutations in expression positions are deliberately left alone, because rewriting inside an expression could change what it means.</p>
         <CodeBlock code={mutationSource} lang="js" title="tracked vs. untracked" />
+        <p>From 1.23.0 the compiler reports every assignment it leaves untracked as warning <code>WIZZ-G026</code>, in the script and in inline handlers, located at the line and column. Warnings never fail a build: <code>wizz build</code> and <code>wizz dev</code> print them, <code>--json</code> lists them in <code>diagnostics</code> with <code>"severity": "warning"</code> while <code>ok</code> stays true, and the MCP diagnostics tools return them. Parameter defaults, declarations, class fields, and names shadowed by a parameter or a local <code>let</code> are not reported.</p>
 
         <h2 id="events" class="reveal">Event handling</h2>
         <p><code>{"on:<event>"}</code> binds any native DOM event name — <code>click</code>, <code>input</code>, <code>submit</code>, <code>keydown</code>, <code>pointermove</code> — with <code>addEventListener</code>. The value is either a component function or an expression that receives the event.</p>
@@ -224,10 +244,23 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
           <li>Event directives work on <strong>native elements only</strong> — pass callbacks to components as props.</li>
           <li>Handlers are client-only; server rendering skips them, and hydration attaches them after the adoption walk passes.</li>
           <li><code>destroy()</code> removes every listener Wizz attached.</li>
-          <li>Assignments inside an inline arrow or <code>function</code> handler are tracked like assignments in script functions, so a two-way input needs no separate setter. An inline handler that assigns a prop fails with <code>WIZZ-G015</code>.</li>
+          <li>Assignments inside an inline arrow or <code>function</code> handler are tracked like assignments in script functions, with or without parentheses around the body: <code>{"on:input={(e) => (name = e.target.value)}"}</code> updates the DOM (1.23.0+; earlier releases tracked only the unparenthesized form). An inline handler that assigns a prop fails with <code>WIZZ-G015</code>.</li>
         </ul>
         <Callout kind="note" title="Upgrading from an earlier release" body="Before 1.17.1, an assignment written directly in an inline handler changed the variable but never updated the DOM. If wizz --version reports an older compiler, run wizz update." />
         <Callout kind="tip" title="Prefer named handlers" body="Inline arrows are reactive, but named functions keep templates scannable and are easy to unit-test." />
+
+        <h2 id="bindings" class="reveal">Two-way bindings</h2>
+        <p>From 1.23.0, <code>bind:value</code> and <code>bind:checked</code> keep a form control and a top-level <code>let</code> in sync in both directions: typing updates the variable, and assigning the variable updates the control.</p>
+        <CodeBlock code={bindSource} lang="wizz" title="FoodForm.wizz" />
+        <ul>
+          <li><strong>It is shorthand for the pair you would write.</strong> <code>{"bind:value={food}"}</code> compiles to <code>{"value={food}"}</code> plus an <code>on:input</code> handler that assigns <code>food</code> (<code>on:change</code> for <code>{"<select>"}</code> and checkboxes), so it server-renders the current value, hydrates, works inside <code>{"{#if}"}</code> branches, and writes <code>persist()</code> state through to storage.</li>
+          <li><code>bind:value</code> works on <code>{"<input>"}</code> (any type except <code>checkbox</code>, <code>radio</code>, and <code>file</code>), <code>{"<textarea>"}</code>, and <code>{"<select>"}</code>; <code>bind:checked</code> works on <code>{'<input type="checkbox">'}</code>.</li>
+          <li><code>type="number"</code> and <code>type="range"</code> bind numbers, and an empty field binds <code>null</code>. A half-typed number such as <code>1.</code> is left alone rather than overwritten. A bound <code>{"<input>"}</code> needs a static <code>type</code>.</li>
+          <li>The target must be a top-level <code>let</code> named directly. Props are read-only, so copy one into a local <code>let</code> to bind it.</li>
+          <li>An <code>on:input</code> handler of your own can sit beside a binding; both run.</li>
+        </ul>
+        <Callout kind="warn" title="Where bindings are not available" body={"Bindings are rejected on imported component tags, inside {#each} bodies (a row re-renders only when its collection changes, so the control would not follow the state), and for bind:group, bind:this, and other properties: WIZZ-P062 to WIZZ-P064, never a silent no-op. Use value={...} with an on:input handler there, for example on:input={(e) => rename(todo.id, e.target.value)} in a row."} />
+        <Callout kind="note" title="Server-rendered textarea and select" body="The server writes value as an attribute, which <textarea> and <select> do not display, so they show their bound value once the page hydrates. Inputs show it immediately." />
 
         <h2 id="lists" class="reveal">Lists with {"{#each}"}</h2>
         <p>Give each row a key when node identity should follow the item — for example when rows reorder. On reassignment Wizz retains matching keys, moves them into the new order, updates their text and attributes, creates new keys, and removes missing ones. Duplicate keys throw. Elements inside the row body may use <code>on:</code> directives with the item variable in scope (1.22.0+): when a retained key receives a new item object, its handlers automatically read the replacement, and removed rows release their listeners.</p>
@@ -238,7 +271,7 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
           <div class="mini-card"><h3>Every {"{#each}"} must…</h3><p>sit inside a native element, have exactly one native root element per row, and iterate a reactive <code>let</code> to update (a <code>const</code> renders once).</p></div>
           <div class="mini-card"><h3>Row bodies may not contain…</h3><p>imported components (<code>WIZZ-G004</code>) or nested {"{#if}"}/{"{#each}"} blocks (<code>WIZZ-G005</code>). Precompute per-row classes and labels in the script.</p></div>
         </div>
-        <Callout kind="note" title="Inline arrow vs. factory call on rows" body="An each item's on: expression is evaluated once when the row is created. Write on:click={() => removeTodo(todo.id)} rather than on:click={makeHandler(todo)} so the handler reads the latest item value on click. Before 1.22.0, on: inside {#each} failed with WIZZ-G006; delegate from the parent container on older compilers." />
+        <Callout kind="note" title="Inline arrow vs. factory call on rows" body={"An each item's on: expression is evaluated once when the row is created. Write on:click={() => removeTodo(todo.id)} rather than on:click={makeHandler(todo)} so the handler reads the latest item value on click. Before 1.22.0, on: inside {#each} failed with WIZZ-G006; delegate from the parent container on older compilers."} />
 
         <h3 id="todo-demo" class="reveal">Live: keyed todo list</h3>
         <p>A keyed list with one delegated click listener, a submit handler, CSS-driven filtering, and <code>persist()</code> — add a few items and reload.</p>
@@ -248,9 +281,9 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
         </div>
 
         <h2 id="conditionals" class="reveal">Conditional rendering</h2>
-        <p><code>{"{#if}"}</code> chooses a branch with the expression grammar — identifiers, member access, literals, and strict equality — plus an optional <code>{"{:else}"}</code>. From 1.22.0, whenever a reactive <code>let</code> or prop read by the test changes, Wizz re-evaluates the condition and swaps the branch in place if its truthiness changed: the old branch's DOM nodes, <code>on:</code> listeners, inner lists, and child components are torn down, and the new branch is built from current state. A test that reads only <code>const</code> bindings renders once at mount with no block overhead.</p>
+        <p><code>{"{#if}"}</code> chooses a branch with the full expression grammar — <code>{"{#if items.length > 0 && !busy}"}</code> is valid from 1.23.0 — plus an optional <code>{"{:else}"}</code>. From 1.22.0, whenever a reactive <code>let</code> or prop read by the test changes, Wizz re-evaluates the condition and swaps the branch in place if its truthiness changed: the old branch's DOM nodes, <code>on:</code> listeners, inner lists, and child components are torn down, and the new branch is built from current state. A test that reads only <code>const</code> bindings renders once at mount with no block overhead.</p>
         <CodeBlock code={ifSource} lang="wizz" title="Panel.wizz" />
-        <Callout kind="tip" title="Preserving DOM state while hidden" body={"Swapping an {#if} branch destroys the old branch and builds a fresh one, so typed input text, scroll position, or a child component's internal state inside that branch is reset. When an element should stay mounted while hidden, toggle hidden={closed} or a bound class instead."} />
+        <Callout kind="tip" title="Preserving DOM state while hidden" body={"Swapping an {#if} branch destroys the old branch and builds a fresh one, so typed input text, scroll position, or a child component's internal state inside that branch is reset. When an element should stay mounted while hidden, toggle hidden={!open} or a bound class instead."} />
         <CodeBlock code={toggleSource} lang="wizz" title="Disclosure.wizz" />
         <Callout kind="note" title="Upgrading from an earlier release" body="Before 1.22.0, {#if} chose its branch once at mount and never swapped it when state changed (and before 1.18.1, a reactive binding inside an untaken branch crashed the mount). If wizz --version reports an older compiler, run wizz update." />
 
@@ -275,7 +308,7 @@ if (done) status = "ok";          // unbraced control-flow body: add braces
 
         <h2 id="patterns" class="reveal">Patterns</h2>
         <h3>Derived values</h3>
-        <p>Wizz has no computed-value syntax: keep a single function that recomputes derived state, call it after the mutations that matter, and once on mount.</p>
+        <p>A derived value that one expression can say belongs in the template (1.23.0+): conditionals, comparisons, and calls cover labels, classes, and counts with no extra state. Wizz has no computed-value declaration, so for anything that needs a loop or an arrow, such as a <code>reduce</code>, keep a single function that recomputes it, call it after the mutations that matter, and once on mount.</p>
         <CodeBlock code={derivedSource} lang="wizz" title="Cart.wizz" />
         <h3>Cleanup</h3>
         <p>Anything you start in <code>onMount</code> — intervals, observers, global listeners, <code>AbortController</code>s — stop in <code>onDestroy</code>. Do not change state there; the component is being torn down.</p>
