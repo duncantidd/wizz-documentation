@@ -228,7 +228,8 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
     flex-wrap: wrap;
     justify-content: center;
     gap: 1rem;
-    margin-block-start: 2.5rem;
+    /* 40px on phones, growing to 56px on wide screens. */
+    margin-block-start: clamp(2.5rem, 1.5rem + 2.5vw, 3.5rem);
   }
 
   .btn-hero {
@@ -260,7 +261,9 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
 
   .install {
     max-inline-size: 60rem;
-    margin: 2.5rem auto 0;
+    /* A larger step than the paragraph-to-buttons gap: the terminal is a
+       separate block, not part of the call to action. 48px to 80px. */
+    margin: clamp(3rem, 1.5rem + 4.5vw, 5rem) auto 0;
     text-align: start;
   }
 
