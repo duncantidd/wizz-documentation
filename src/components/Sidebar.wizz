@@ -72,7 +72,7 @@
   </nav>
   <footer class="versions">
     <span class="badge badge-mint">0 runtime deps</span>
-    <code>compiler 1.23.0 · syntax 1.6.0 · output 1.13.0</code>
+    <code>compiler 1.24.0 · syntax 1.6.0 · output 1.13.0</code>
   </footer>
 </aside>
 

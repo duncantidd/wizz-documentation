@@ -30,7 +30,7 @@ Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail
 ## Reference
 
 - [API Reference](/docs/api): Script globals, template directives, generated module exports, compiler API, router, handler contract, and the full `WIZZ-P`/`WIZZ-G` diagnostic code catalog.
-- [CLI](/docs/cli): `wizz init` (`--sample`/`--bare`), `dev`, `build` (`--json`, `--adapter node`), `mcp`, `update`, `install-vscode-extension`, `--version`.
+- [CLI](/docs/cli): `wizz init` (`--sample`/`--bare`, 1.24.0+), `dev`, `build` (`--json`, `--adapter node`), `mcp`, `update`, `install-vscode-extension`, `--version`.
 - [MCP Server](/docs/mcp): The six tools `wizz mcp` exposes to AI agents, the recommended agent loop, and the security model.
 
 ## Optional

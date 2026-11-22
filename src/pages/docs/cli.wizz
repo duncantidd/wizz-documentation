@@ -39,7 +39,7 @@ curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/ins
 # From a clone of the repository
 ./scripts/install-cli.sh            # latest release
 ./scripts/install-cli.sh --local    # the working tree (developing Wizz itself)
-./scripts/install-cli.sh ./wizz-1.23.0.tgz   # a specific tarball (path or URL)`;
+./scripts/install-cli.sh ./wizz-1.24.0.tgz   # a specific tarball (path or URL)`;
 
   const uninstallCmd = `rm -f "\${XDG_BIN_HOME:-$HOME/.local/bin}/wizz"
 rm -rf "\${XDG_DATA_HOME:-$HOME/.local/share}/wizz"`;
@@ -122,7 +122,7 @@ wizz mcp --root /path/to/project --allow-write   # enable compile-gated writes`;
 # without the CLI
 code --install-extension wizz-vscode-<version>.vsix`;
   const versionCmd = `wizz --version
-# wizz 1.23.0 (compiler 1.23.0, syntax 1.6.0, output 1.13.0)`;
+# wizz 1.24.0 (compiler 1.24.0, syntax 1.6.0, output 1.13.0)`;
 </script>
 
 <wizz:head>
@@ -165,7 +165,7 @@ code --install-extension wizz-vscode-<version>.vsix`;
         </div>
 
         <h2 id="init" class="reveal">wizz init</h2>
-        <p>Before writing anything, <code>wizz init</code> asks <code>Bootstrap with sample code? [Y/n]</code>. Either answer gives a project that runs with no manual edits:</p>
+        <p>From 1.24.0, before writing anything, <code>wizz init</code> asks <code>Bootstrap with sample code? [Y/n]</code>. Either answer gives a project that runs with no manual edits:</p>
         <ul>
           <li><strong>Sample</strong> (Enter, <code>y</code>, or <code>yes</code>): the showcase starter. You get <code>index.html</code>, a global <code>App.css</code>, a landing page with a reactive head, a persisted counter, an animated terminal card, a server-rendered <code>/home</code> page, a sample <code>/api/health</code> handler, and a README.</li>
           <li><strong>Bare</strong> (<code>n</code> or <code>no</code>): only <code>index.html</code> (no stylesheet link), a placeholder <code>src/App.wizz</code> at <code>/</code>, and a README describing that layout. There is no <code>App.css</code>, no components, no pages, and no API handler. It builds and serves with no warnings.</li>
