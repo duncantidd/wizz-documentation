@@ -22,7 +22,9 @@
   ];
 
   const usageText = `Usage:
-  wizz init [directory] [--force]   Scaffold a starter project
+  wizz init [directory] [--force] [--sample | --bare]
+                                    Scaffold a starter project (asks whether to include
+                                    the sample code; --sample/--bare answer up front)
   wizz build [input-directory] [output-directory] [--json] [--adapter <name>]
   wizz dev [--port <n>] [--host <addr>]
   wizz mcp [--root <dir>] [--allow-write]
@@ -42,9 +44,18 @@ curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/ins
   const uninstallCmd = `rm -f "\${XDG_BIN_HOME:-$HOME/.local/bin}/wizz"
 rm -rf "\${XDG_DATA_HOME:-$HOME/.local/share}/wizz"`;
 
-  const initCmd = `wizz init              # scaffold into the current (empty) directory
+  const initCmd = `wizz init              # scaffold into the current (empty) directory; asks sample or bare
 wizz init my-app       # scaffold into ./my-app
+wizz init my-app --bare     # minimal project, no question asked
+wizz init my-app --sample   # full sample project, no question asked
 wizz init my-app --force   # allow a non-empty directory; existing files are never overwritten`;
+
+  const initPrompt = `$ wizz init my-app
+Bootstrap with sample code? [Y/n] n
+Created my-app/README.md
+Created my-app/index.html
+Created my-app/src/App.wizz
+Next: run \`wizz dev\` to start editing.`;
 
   const devCmd = `wizz dev                       # build src → dist, serve http://127.0.0.1:3000, watch
 wizz dev --port 4321
@@ -142,7 +153,7 @@ code --install-extension wizz-vscode-<version>.vsix`;
           <table>
             <thead><tr><th>Command</th><th>Purpose</th><th>Flags</th></tr></thead>
             <tbody>
-              <tr><td><code>init</code></td><td>Scaffold the starter project</td><td><code>[directory]</code> <code>--force</code></td></tr>
+              <tr><td><code>init</code></td><td>Scaffold a sample or bare project</td><td><code>[directory]</code> <code>--force</code> <code>--sample</code> <code>--bare</code></td></tr>
               <tr><td><code>dev</code></td><td>Build, serve, watch, live-reload, SSR</td><td><code>--port</code> <code>--host</code></td></tr>
               <tr><td><code>build</code></td><td>Production build into <code>dist/</code></td><td><code>[in out]</code> <code>--json</code> <code>--adapter node</code></td></tr>
               <tr><td><code>mcp</code></td><td>MCP server over stdio</td><td><code>--root</code> <code>--allow-write</code></td></tr>
@@ -154,7 +165,13 @@ code --install-extension wizz-vscode-<version>.vsix`;
         </div>
 
         <h2 id="init" class="reveal">wizz init</h2>
-        <p>Scaffolds the showcase starter: <code>index.html</code>, a global <code>App.css</code>, a landing page with a reactive head, a persisted counter, an animated terminal card, a server-rendered <code>/home</code> page, a sample <code>/api/health</code> handler, and a README. The result runs with no manual edits.</p>
+        <p>Before writing anything, <code>wizz init</code> asks <code>Bootstrap with sample code? [Y/n]</code>. Either answer gives a project that runs with no manual edits:</p>
+        <ul>
+          <li><strong>Sample</strong> (Enter, <code>y</code>, or <code>yes</code>): the showcase starter. You get <code>index.html</code>, a global <code>App.css</code>, a landing page with a reactive head, a persisted counter, an animated terminal card, a server-rendered <code>/home</code> page, a sample <code>/api/health</code> handler, and a README.</li>
+          <li><strong>Bare</strong> (<code>n</code> or <code>no</code>): only <code>index.html</code> (no stylesheet link), a placeholder <code>src/App.wizz</code> at <code>/</code>, and a README describing that layout. There is no <code>App.css</code>, no components, no pages, and no API handler. It builds and serves with no warnings.</li>
+        </ul>
+        <CodeBlock code={initPrompt} lang="text" title="terminal" />
+        <p>Answers are case-insensitive, and anything else asks again. Ctrl+C or end of input stops init with no files written. <code>--sample</code> and <code>--bare</code> answer the question up front; use one or the other, not both. The question is never asked when stdin is not a terminal (CI, pipes, agents) or when <code>--json</code> is passed: init then writes the sample project, exactly as before the question existed.</p>
         <CodeBlock code={initCmd} lang="bash" title="terminal" />
 
         <h2 id="dev" class="reveal">wizz dev</h2>
@@ -198,7 +215,7 @@ code --install-extension wizz-vscode-<version>.vsix`;
         <CodeBlock code={versionCmd} lang="bash" title="terminal" />
 
         <h2 id="stability" class="reveal">Stability & exit codes</h2>
-        <p>The supported commands, their documented defaults, generated output paths, and non-zero failure behavior are stable within a CLI major version. Build failures, invalid usage (unknown commands, stray flags, a single build directory), and a missing shell for <code>dev</code> all exit non-zero.</p>
+        <p>The supported commands, their documented defaults, generated output paths, and non-zero failure behavior are stable within a CLI major version. Build failures, invalid usage (unknown commands, stray flags, a single build directory, <code>--sample</code> with <code>--bare</code>), and a missing shell for <code>dev</code> all exit non-zero. Stopping the <code>wizz init</code> question exits 1 at end of input and 130 on Ctrl+C.</p>
         <Callout kind="note" title="Automate the CLI, not the scripts" body="build.js, scripts/cli.js, and scripts/dev.js are implementation entry points that may change. Use the wizz command in CI and tooling." />
       </article>
       <PageNav prevHref="/docs/api" prevLabel="API Reference" nextHref="/docs/mcp" nextLabel="MCP Server" />

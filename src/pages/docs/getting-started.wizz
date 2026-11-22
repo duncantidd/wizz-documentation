@@ -161,8 +161,9 @@ PORT=3000 node dist/server.mjs`;
         <Callout kind="warn" title="What a checksum does and doesn't prove" body="A matching sha256 means your file is byte-for-byte what the release published, with nothing corrupted, truncated, or swapped in transit. It doesn't prove who published it: the checksum file and the tarball live in the same GitHub release, so anyone able to replace one could replace both. Releases aren't signed yet, so your trust ultimately rests on the duncantidd/wizz.js repository and GitHub." />
 
         <h2 id="scaffold" class="reveal">Scaffold a project</h2>
-        <p><code>wizz init</code> writes the showcase starter: a design-token stylesheet, a landing page with a reactive document head, a counter whose value persists across reloads and tabs, a server-rendered <code>/home</code> page, and a sample API route. It runs correctly with no manual editing.</p>
+        <p><code>wizz init</code> first asks <code>Bootstrap with sample code? [Y/n]</code>. Press Enter for the showcase starter: a design-token stylesheet, a landing page with a reactive document head, a counter whose value persists across reloads and tabs, a server-rendered <code>/home</code> page, and a sample API route. Answer <code>n</code> for a bare project: just the document shell, a placeholder <code>src/App.wizz</code>, and a README. Both run correctly with no manual editing.</p>
         <CodeBlock code={scaffoldCmd} lang="bash" title="terminal" />
+        <p>To skip the question, pass <code>--bare</code> or <code>--sample</code>. Scripts and CI never see it: without a terminal, init writes the sample project. See <a href="/docs/cli#init">wizz init</a> for the details.</p>
         <Callout kind="note" title="Safe by default" body="wizz init refuses to write into a non-empty directory unless you pass --force, and even then it never overwrites an existing file." />
 
         <h2 id="structure" class="reveal">Project structure</h2>
