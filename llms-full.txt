@@ -2,7 +2,7 @@
 
 > Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
 
-Versions covered: compiler 1.23.0, syntax 1.6.0, output 1.13.0 (`wizz --version`).
+Versions covered: compiler 1.24.0, syntax 1.6.0, output 1.13.0 (`wizz --version`).
 Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
 
 Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
@@ -31,6 +31,8 @@ my-app/
     ├── components/Card.wizz   # Imported component
     └── server/api/health.js   # Server handler → /api/health
 ```
+
+That is the sample project. From 1.24.0, on a terminal, `wizz init` first asks `Bootstrap with sample code? [Y/n]`; answering `n` (or passing `--bare`) writes a bare project instead: `index.html` with no stylesheet link, a placeholder `src/App.wizz`, and a `README.md`, with no `App.css`, components, pages, or API handler. Without a terminal (CI, pipes, agent shells) or with `--json`, init never asks and writes the sample project; pass `--bare` to get the bare one.
 
 You edit `index.html`, `App.css`, `src/**/*.wizz`, and `src/server/api/*.js`. `dist/` is generated and disposable: never edit it.
 
@@ -511,7 +513,7 @@ Built modules carry no CSS when the shell links `/wizz.css`, which `wizz build` 
 ## 16. CLI
 
 ```bash
-wizz init [dir] [--force]              # scaffold the starter project
+wizz init [dir] [--force] [--sample | --bare]   # scaffold; asks sample or bare on a TTY (1.24.0+)
 wizz dev [--port <n>] [--host <addr>]  # build, serve 127.0.0.1:3000, watch, SSR, live reload
 wizz build [in out] [--json] [--adapter node]
 wizz mcp [--root <dir>] [--allow-write]
@@ -520,6 +522,7 @@ wizz install-vscode-extension
 wizz --version
 ```
 
+- `wizz init` (1.24.0+) asks `Bootstrap with sample code? [Y/n]` only when stdin is a TTY and neither `--json`, `--sample`, nor `--bare` is given. Enter/`y`/`yes` → sample, `n`/`no` → bare, anything else re-asks; Ctrl+C (exit 130) or EOF (exit 1) writes nothing. `--sample` and `--bare` are mutually exclusive. It refuses a non-empty directory without `--force` and never overwrites a file.
 - `wizz build` compiles every file (continuing past failures), writes route/API manifests, copies the runtime, `index.html`, `App.css`, and `src/server/`, and extracts styles to `dist/wizz.css`. Non-zero exit on any failure.
 - `wizz build --json` prints a `wizz-build-diagnostics@1` envelope: `{ format, ok, diagnostics: [{ code, severity, message, file, line, column }], files: [{ file, serverRenderable }] }`.
 - `wizz build --adapter node` adds `dist/server.mjs`, a standalone SSR + API host (`node dist/server.mjs`, default port 8080, `PORT` env).
