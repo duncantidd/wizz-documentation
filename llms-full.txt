@@ -2,7 +2,7 @@
 
 > Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
 
-Versions covered: compiler 1.24.0, syntax 1.6.0, output 1.13.0 (`wizz --version`).
+Versions covered: compiler 1.25.0, syntax 1.6.0, output 1.13.0 (`wizz --version`).
 Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
 
 Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
@@ -11,7 +11,7 @@ Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny 
 
 ## 1. Install and project layout
 
-Requirements: Node.js 18+, curl and tar (installer only), an evergreen browser.
+Requirements: Node.js 22+ (1.25.0 dropped Node 18 and 20), curl and tar (installer only), an evergreen browser.
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/install-cli.sh | bash
@@ -515,7 +515,7 @@ Built modules carry no CSS when the shell links `/wizz.css`, which `wizz build` 
 ```bash
 wizz init [dir] [--force] [--sample | --bare]   # scaffold; asks sample or bare on a TTY (1.24.0+)
 wizz dev [--port <n>] [--host <addr>]  # build, serve 127.0.0.1:3000, watch, SSR, live reload
-wizz build [in out] [--json] [--adapter node]
+wizz build [in out] [--json] [--adapter node] [--compact]
 wizz mcp [--root <dir>] [--allow-write]
 wizz update
 wizz install-vscode-extension
@@ -526,6 +526,7 @@ wizz --version
 - `wizz build` compiles every file (continuing past failures), writes route/API manifests, copies the runtime, `index.html`, `App.css`, and `src/server/`, and extracts styles to `dist/wizz.css`. Non-zero exit on any failure.
 - `wizz build --json` prints a `wizz-build-diagnostics@1` envelope: `{ format, ok, diagnostics: [{ code, severity, message, file, line, column }], files: [{ file, serverRenderable }] }`.
 - `wizz build --adapter node` adds `dist/server.mjs`, a standalone SSR + API host (`node dist/server.mjs`, default port 8080, `PORT` env).
+- `wizz build --compact` (1.25.0+) removes comments and insignificant whitespace from every emitted artifact (component modules, `dist/runtime/**`, manifests, `wizz.css`, `App.css`, `index.html`, and `server.mjs` with `--adapter node`) without renaming or rewriting anything, so behavior is identical. It writes no source maps (and removes stale ones), leaves `dist/server/**` handlers as written, fails with file/line/column on an unterminated string or comment in a `<script>`/`<wizz:style>` block, `App.css`, or `index.html`, and adds `"compact": true` to the `--json` envelope. At most once, `build` only. Use a normal build to debug.
 
 ---
 
@@ -539,7 +540,7 @@ A zero-dependency MCP server over stdio. Register it with `{ "command": "wizz", 
 | `language_contract` | No | The `.wizz` language contract, diagnostic catalog, and the template-limits table with working patterns. |
 | `component_diagnostics` | No | Compile a file, inline source, or everything into structured records. |
 | `create_or_update_component` | Yes (needs `--allow-write`) | Write a `.wizz` file only if it compiles. |
-| `build_project` | `dist/` only | Run the build, return the JSON envelope. |
+| `build_project` | `dist/` only | Run the build, return the JSON envelope. Optional `adapter: "node"` and `compact: true` (1.25.0+). |
 | `dev_workflow` | No | Dev/build/deploy commands and the secrets rule. |
 
 Recommended loop: `project_overview` → `language_contract` → draft and check with `component_diagnostics` (inline `source`) → fix by switching on the diagnostic `code` and line/column → write with `create_or_update_component` → verify with `build_project`.

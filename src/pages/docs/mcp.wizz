@@ -50,7 +50,7 @@
   const overviewOut = `{
   "root": "/mnt/c/Users/dunca/Develop/wizz-documentation",
   "inputDirectory": "src",
-  "versions": { "compiler": "1.24.0", "syntax": "1.6.0", "output": "1.13.0" },
+  "versions": { "compiler": "1.25.0", "syntax": "1.6.0", "output": "1.13.0" },
   "documentShell": true,
   "distPresent": true,
   "adapters": ["node"],
@@ -87,7 +87,7 @@
   }]
 }`;
 
-  const buildIn = `{ "inputDirectory": "src", "outputDirectory": "dist", "adapter": "node" }   // all optional`;
+  const buildIn = `{ "inputDirectory": "src", "outputDirectory": "dist", "adapter": "node", "compact": true }   // all optional`;
   const buildOut = `{
   "format": "wizz-build-diagnostics@1",
   "ok": true,
@@ -169,7 +169,7 @@
         </div>
 
         <h3 id="build-project" class="reveal">build_project</h3>
-        <p>Runs the <code>wizz build</code> equivalent in-process with a silent logger and returns the <code>wizz-build-diagnostics@1</code> envelope plus compiled/failed counts.</p>
+        <p>Runs the <code>wizz build</code> equivalent in-process with a silent logger and returns the <code>wizz-build-diagnostics@1</code> envelope plus compiled/failed counts. From 1.25.0, <code>"compact": true</code> runs the <a href="/docs/cli#compact"><code>--compact</code></a> build and is echoed in the result.</p>
         <div class="grid-2">
           <CodeBlock code={buildIn} lang="json" title="arguments" />
           <CodeBlock code={buildOut} lang="json" title="structured result" />

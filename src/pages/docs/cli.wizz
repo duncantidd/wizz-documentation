@@ -14,6 +14,7 @@
     { id: "build", label: "wizz build" },
     { id: "json", label: "--json diagnostics", depth: 3 },
     { id: "adapter", label: "--adapter node", depth: 3 },
+    { id: "compact", label: "--compact", depth: 3 },
     { id: "mcp-cmd", label: "wizz mcp" },
     { id: "update", label: "wizz update" },
     { id: "vscode", label: "wizz install-vscode-extension" },
@@ -25,7 +26,7 @@
   wizz init [directory] [--force] [--sample | --bare]
                                     Scaffold a starter project (asks whether to include
                                     the sample code; --sample/--bare answer up front)
-  wizz build [input-directory] [output-directory] [--json] [--adapter <name>]
+  wizz build [input-directory] [output-directory] [--json] [--adapter <name>] [--compact]
   wizz dev [--port <n>] [--host <addr>]
   wizz mcp [--root <dir>] [--allow-write]
                                     Serve Wizz tooling to AI agents over MCP (stdio)
@@ -33,13 +34,13 @@
   wizz install-vscode-extension     Install the latest VS Code extension from a release
   wizz --version                    Print the compiler and contract versions`;
 
-  const installCmd = `# Latest release (needs Node.js 18+, curl, tar)
+  const installCmd = `# Latest release (needs Node.js 22+, curl, tar)
 curl -fsSL https://raw.githubusercontent.com/duncantidd/wizz.js/main/scripts/install-cli.sh | bash
 
 # From a clone of the repository
 ./scripts/install-cli.sh            # latest release
 ./scripts/install-cli.sh --local    # the working tree (developing Wizz itself)
-./scripts/install-cli.sh ./wizz-1.24.0.tgz   # a specific tarball (path or URL)`;
+./scripts/install-cli.sh ./wizz-1.25.0.tgz   # a specific tarball (path or URL)`;
 
   const uninstallCmd = `rm -f "\${XDG_BIN_HOME:-$HOME/.local/bin}/wizz"
 rm -rf "\${XDG_DATA_HOME:-$HOME/.local/share}/wizz"`;
@@ -66,7 +67,8 @@ HOST=0.0.0.0 wizz dev          # same, from the environment (--host wins)`;
 wizz build components public   # explicit input and output (both, or neither)
 wizz build --json              # machine-readable diagnostics on stdout
 wizz build --adapter node      # also emit dist/server.mjs
-wizz build --adapter=node --json`;
+wizz build --adapter=node --json
+wizz build --compact           # production output: smaller, no source maps (1.25.0+)`;
 
   const jsonFailure = `{
   "format": "wizz-build-diagnostics@1",
@@ -112,6 +114,11 @@ node -e '
 node dist/server.mjs              # http://localhost:8080
 PORT=3000 node dist/server.mjs`;
 
+  const compactCmd = `wizz build --compact                       # src → dist, compacted
+wizz build --adapter node --compact        # server.mjs is compacted too
+wizz build --compact --json                # envelope gains "compact": true
+wizz build                                 # readable output with source maps, for debugging`;
+
   const mcpCmd = `wizz mcp                                   # root = current directory, read-only
 wizz mcp --root /path/to/project           # fix the project root
 wizz mcp --root /path/to/project --allow-write   # enable compile-gated writes`;
@@ -122,12 +129,12 @@ wizz mcp --root /path/to/project --allow-write   # enable compile-gated writes`;
 # without the CLI
 code --install-extension wizz-vscode-<version>.vsix`;
   const versionCmd = `wizz --version
-# wizz 1.24.0 (compiler 1.24.0, syntax 1.6.0, output 1.13.0)`;
+# wizz 1.25.0 (compiler 1.25.0, syntax 1.6.0, output 1.13.0)`;
 </script>
 
 <wizz:head>
   <title>CLI — Wizz.js Docs</title>
-  <meta name="description" content="The wizz command: init, dev, build (--json, --adapter node), mcp, update, install-vscode-extension, and --version.">
+  <meta name="description" content="The wizz command: init, dev, build (--json, --adapter node, --compact), mcp, update, install-vscode-extension, and --version.">
 </wizz:head>
 
 <div class="site">
@@ -155,7 +162,7 @@ code --install-extension wizz-vscode-<version>.vsix`;
             <tbody>
               <tr><td><code>init</code></td><td>Scaffold a sample or bare project</td><td><code>[directory]</code> <code>--force</code> <code>--sample</code> <code>--bare</code></td></tr>
               <tr><td><code>dev</code></td><td>Build, serve, watch, live-reload, SSR</td><td><code>--port</code> <code>--host</code></td></tr>
-              <tr><td><code>build</code></td><td>Production build into <code>dist/</code></td><td><code>[in out]</code> <code>--json</code> <code>--adapter node</code></td></tr>
+              <tr><td><code>build</code></td><td>Production build into <code>dist/</code></td><td><code>[in out]</code> <code>--json</code> <code>--adapter node</code> <code>--compact</code></td></tr>
               <tr><td><code>mcp</code></td><td>MCP server over stdio</td><td><code>--root</code> <code>--allow-write</code></td></tr>
               <tr><td><code>update</code></td><td>Swap in the latest release</td><td>—</td></tr>
               <tr><td><code>install-vscode-extension</code></td><td>Install the release's <code>.vsix</code></td><td>—</td></tr>
@@ -199,6 +206,17 @@ code --install-extension wizz-vscode-<version>.vsix`;
         <p>Opt-in, build-only. Emits <code>dist/server.mjs</code>, a standalone SSR + API host using only Node built-ins. The JSON envelope gains <code>"adapter": "node"</code>. Unknown adapter names fail at the CLI boundary with the list of known ones.</p>
         <CodeBlock code={adapterCmd} lang="bash" title="terminal" />
 
+        <h3 id="compact" class="reveal">--compact</h3>
+        <p>From 1.25.0. Opt-in, build-only production output: removes comments and insignificant whitespace from everything the build emits. That covers every component module (client, <code>.server.js</code>, and <code>.hydrate.js</code>), <code>dist/runtime/**</code> and both manifests, <code>wizz.css</code> and the copied <code>App.css</code>, <code>index.html</code>, and <code>dist/server.mjs</code> when combined with <code>--adapter node</code>. It may appear in any position, at most once, and only on <code>build</code>.</p>
+        <CodeBlock code={compactCmd} lang="bash" title="terminal" />
+        <ul>
+          <li><strong>Same behavior, smaller files.</strong> The compactor is hand-rolled (no dependency) and conservative: nothing is renamed or rewritten. Strings, template literals, regex literals, and the line breaks that automatic semicolon insertion depends on survive unchanged. In CSS, strings, <code>url(...)</code>, escapes, and descendant combinators are kept. In <code>index.html</code>, tags and the contents of <code>{"<pre>"}</code>, <code>{"<textarea>"}</code>, <code>{"<title>"}</code>, <code>{"<script>"}</code> (including the <code>application/wizz-state</code> payload), and <code>{"<style>"}</code> are copied byte for byte.</li>
+          <li><strong>No source maps.</strong> A compact build writes no <code>.map</code> files and no <code>sourceMappingURL</code> comments, and removes maps an earlier normal build left in <code>dist/</code>. Compaction would make the maps point at the wrong places, and a public map hands out your source. Rebuild without <code>--compact</code> to debug.</li>
+          <li><strong>API handlers are copied as written.</strong> <code>dist/server/**</code> is your code, not build output, so it is never compacted.</li>
+          <li><strong>Located failures.</strong> If a <code>{"<script>"}</code> or <code>{"<wizz:style>"}</code> block, <code>App.css</code>, or <code>index.html</code> has an unterminated string or comment, the build fails with the file, line, and column instead of writing broken output. A normal build does not check this.</li>
+          <li><strong>JSON.</strong> With <code>--json</code>, the envelope gains <code>"compact": true</code>; it is absent from normal builds.</li>
+        </ul>
+
         <h2 id="mcp-cmd" class="reveal">wizz mcp</h2>
         <p>Starts the Model Context Protocol server on stdio for AI agents. The root is fixed at startup, and writes stay disabled unless you opt in. See <a href="/docs/mcp">MCP Server</a> for the tools and security model.</p>
         <CodeBlock code={mcpCmd} lang="bash" title="terminal" />
@@ -215,7 +233,7 @@ code --install-extension wizz-vscode-<version>.vsix`;
         <CodeBlock code={versionCmd} lang="bash" title="terminal" />
 
         <h2 id="stability" class="reveal">Stability & exit codes</h2>
-        <p>The supported commands, their documented defaults, generated output paths, and non-zero failure behavior are stable within a CLI major version. Build failures, invalid usage (unknown commands, stray flags, a single build directory, <code>--sample</code> with <code>--bare</code>), and a missing shell for <code>dev</code> all exit non-zero. Stopping the <code>wizz init</code> question exits 1 at end of input and 130 on Ctrl+C.</p>
+        <p>The supported commands, their documented defaults, generated output paths, and non-zero failure behavior are stable within a CLI major version. Build failures, invalid usage (unknown commands, stray flags, a repeated <code>--compact</code>, a single build directory, <code>--sample</code> with <code>--bare</code>), and a missing shell for <code>dev</code> all exit non-zero. Stopping the <code>wizz init</code> question exits 1 at end of input and 130 on Ctrl+C.</p>
         <Callout kind="note" title="Automate the CLI, not the scripts" body="build.js, scripts/cli.js, and scripts/dev.js are implementation entry points that may change. Use the wizz command in CI and tooling." />
       </article>
       <PageNav prevHref="/docs/api" prevLabel="API Reference" nextHref="/docs/mcp" nextLabel="MCP Server" />

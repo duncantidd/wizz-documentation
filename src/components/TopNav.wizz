@@ -77,6 +77,7 @@
     ["API Reference", "Diagnostic codes", "/docs/api#diagnostics", "WIZZ-P WIZZ-G errors"],
     ["CLI", "CLI overview", "/docs/cli", "commands"],
     ["CLI", "wizz build --json", "/docs/cli#build", "diagnostics envelope"],
+    ["CLI", "wizz build --compact", "/docs/cli#compact", "minify production source maps"],
     ["CLI", "wizz update", "/docs/cli#update", "upgrade"],
     ["MCP", "MCP server overview", "/docs/mcp", "agents model context protocol"],
     ["MCP", "MCP tools", "/docs/mcp#tools", "project_overview component_diagnostics"],
@@ -271,7 +272,7 @@
     <a class="brand" href="/" aria-label="Wizz.js home">
       <span class="mark" aria-hidden="true">W</span>
       <span class="word">Wizz<span class="dot">.js</span></span>
-      <span class="ver">1.24</span>
+      <span class="ver">1.25</span>
     </a>
     <ul class="links">{#each links as link (link.id)}<li><a class={link.linkClass} href={link.href} aria-current={link.current}>{link.label}</a></li>{/each}</ul>
     <div class="actions">
