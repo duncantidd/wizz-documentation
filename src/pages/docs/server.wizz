@@ -91,7 +91,8 @@ dist/`;
   const deployCmd = `wizz build --adapter node
 node dist/server.mjs              # http://localhost:8080
 PORT=3000 node dist/server.mjs    # PORT is validated (0-65535)
-cd dist && node server.mjs        # dist resolves from the host's own location`;
+cd dist && node server.mjs        # dist resolves from the host's own location
+wizz build --adapter node --compact   # 1.25.0+: compacted dist/, server.mjs included, no source maps`;
 
   const jsonEnvelope = `{
   "format": "wizz-build-diagnostics@1",

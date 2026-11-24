@@ -53,6 +53,7 @@ Before writing, refactoring, or reviewing frontend styling or architecture, you 
 - **Production Build & Verification**:
   - `wizz build` — Emits compiled component modules, runtime, and extracted styles to `dist/`.
   - `wizz build --adapter node` — Emits a standalone Node SSR + API server at `dist/server.mjs` (run via `node dist/server.mjs`).
+  - `wizz build --compact` (1.25.0+) — Strips comments and whitespace from every emitted artifact and writes no source maps. Use it for deployment builds; use a normal build to debug.
   - `wizz build --json` — Emits machine-parsable `wizz-build-diagnostics@1` JSON (`WIZZ-P###` parser, `WIZZ-G###` generator, `WIZZ-A###` analyzer diagnostics). Always verify builds cleanly after creating or editing `.wizz` files.
 
 ### 2. Non-Negotiable `.wizz` Compiler Contracts

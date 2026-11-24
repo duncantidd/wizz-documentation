@@ -57,7 +57,7 @@ cd my-app && wizz dev   # http://127.0.0.1:3000`;
     { id: "t2", href: "/docs/components", kicker: "Learn", title: "Components & Templating", body: "Single-root templates, props, head, scoped styles." },
     { id: "t3", href: "/docs/reactivity", kicker: "Learn", title: "State & Reactivity", body: "let state, batching, events, lists, persist()." },
     { id: "t4", href: "/docs/api", kicker: "Reference", title: "API Reference", body: "Every hook, directive, module export, and compiler entry." },
-    { id: "t5", href: "/docs/cli", kicker: "Tooling", title: "CLI", body: "init, dev, build, --json, --adapter node, update." },
+    { id: "t5", href: "/docs/cli", kicker: "Tooling", title: "CLI", body: "init, dev, build, --json, --adapter node, --compact, update." },
     { id: "t6", href: "/docs/mcp", kicker: "Tooling", title: "MCP Server", body: "Six tools for agents, with a fixed root and gated writes." }
   ];
 

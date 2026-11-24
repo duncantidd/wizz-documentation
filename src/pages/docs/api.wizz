@@ -264,7 +264,7 @@ const { source, sourceMap } = compileServer(componentSource, {
   const versionsExample = `const { VERSIONS } = require("./src/compiler");
 
 VERSIONS;
-// { compiler: "1.24.0", syntax: "1.6.0", output: "1.13.0" }  (frozen)`;
+// { compiler: "1.25.0", syntax: "1.6.0", output: "1.13.0" }  (frozen)`;
 
   const noParams = [];
 
@@ -367,7 +367,7 @@ export default async function handler(request) {
     <main id="main" class="doc-main glass" on:pointermove={trackSheen}>
       <article class="prose">
         <header>
-          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.24.0 · syntax 1.6.0 · output 1.13.0</p>
+          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.25.0 · syntax 1.6.0 · output 1.13.0</p>
           <h1 class="rise" style="--i: 1">API Reference</h1>
           <p class="lead rise" style="--i: 2">The complete public surface: what a component script can call, what a template can express, what every compiled module exports, and the compiler, router, and server entry points behind them.</p>
         </header>
