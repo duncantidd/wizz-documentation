@@ -12,6 +12,7 @@
     { id: "state", label: "Reactive state" },
     { id: "batching", label: "Microtask batching" },
     { id: "mutations", label: "Which mutations are tracked" },
+    { id: "arrays", label: "Arrays and objects" },
     { id: "events", label: "Event handling" },
     { id: "bindings", label: "Two-way bindings" },
     { id: "lists", label: "Lists with {#each}" },
@@ -62,12 +63,14 @@ count = count + 1;
 count += 1;
 count++;
 user.name = "Grace";              // property chains mark the root (user)
+items[0] = first;                 // element writes mark the root too
 items = [...items, next];
+items.push(next); items = items;  // mutate, then assign: the assignment is the trigger
 setTimeout(() => { status = "done"; }, 500);
 onMount(() => { ready = true; });
 
-// Not tracked: method calls, expression positions, unbraced bodies
-items.push(next);                 // no assignment: reassign the array instead
+// Not tracked: method calls with no assignment, expression positions, unbraced bodies
+items.push(next);                 // warning WIZZ-G027 (1.26.0+): assign afterwards
 log(count = 5);                   // warning WIZZ-G026: inside a call argument
 if (done) status = "ok";          // warning WIZZ-G026: add braces
 
@@ -75,6 +78,30 @@ if (done) status = "ok";          // warning WIZZ-G026: add braces
 // on:input={(e) => name = e.target.value}      tracked
 // on:input={(e) => (name = e.target.value)}    tracked (1.23.0+)
 // on:click={() => ok ? a = 1 : 0}              warning WIZZ-G026`;
+
+  const arraySource = `<script>
+  let items = [];
+
+  function addCopy(x) {
+    items = [...items, x];      // assign a new array
+  }
+
+  function addInPlace(x) {
+    items.push(x);
+    items = items;              // mutate, then assign the same array
+  }
+
+  function forgot(x) {
+    items.push(x);              // warning WIZZ-G027: nothing re-renders
+  }
+<\/script>
+
+<p>{items.length} items</p>`;
+
+  const arrayWarning = `Warning WIZZ-G027: 'items' is changed in place by .push() and never reassigned
+afterwards, so the DOM will not update at src/Cart.wizz:14:5. Reassign it after the call
+(\`items.push(x); items = items;\`) or assign a new array instead (\`items = [...items, x]\`);
+assignment is what schedules the update.`;
 
   const eventSource = `<script>
   let query = "";
@@ -237,6 +264,20 @@ if (done) status = "ok";          // warning WIZZ-G026: add braces
         <CodeBlock code={mutationSource} lang="js" title="tracked vs. untracked" />
         <p>From 1.23.0 the compiler reports every assignment it leaves untracked as warning <code>WIZZ-G026</code>, in the script and in inline handlers, located at the line and column. Warnings never fail a build: <code>wizz build</code> and <code>wizz dev</code> print them, <code>--json</code> lists them in <code>diagnostics</code> with <code>"severity": "warning"</code> while <code>ok</code> stays true, and the MCP diagnostics tools return them. Parameter defaults, declarations, class fields, and names shadowed by a parameter or a local <code>let</code> are not reported.</p>
 
+        <h2 id="arrays" class="reveal">Arrays and objects</h2>
+        <p><strong>Assignment is the trigger.</strong> Every statement-level assignment to a reactive <code>let</code> schedules an update, and Wizz never checks whether the value or reference actually changed. That gives two equally supported ways to change an array:</p>
+        <CodeBlock code={arraySource} lang="wizz" title="Cart.wizz" />
+        <ul>
+          <li><code>{"items = items"}</code> is not a no-op: the assignment, not a new reference, tells Wizz to re-render. A bare <code>items.push(x)</code> with nothing assigned afterwards changes the array and schedules nothing.</li>
+          <li>Writes through a member count too and mark the root name: <code>{'user.name = "Ada";'}</code>, <code>{'items[0] = "first";'}</code>, and <code>{"items.length = 0;"}</code> each re-render whatever reads <code>user</code> or <code>items</code>.</li>
+          <li>When a list re-renders, keyed and keyless <code>{"{#each}"}</code> blocks run every row's update, so an item object changed in place (<code>{'rows[1].name = "Cy"; rows = rows;'}</code>) shows its new values without its row being rebuilt.</li>
+          <li>There is no deep reactivity (no proxies) and array methods are not instrumented: assignment stays the single trigger, which keeps generated code small and predictable. Props are separate: a parent passing the same reference again is skipped by an <code>Object.is</code> check, and props are read-only in the child.</li>
+        </ul>
+        <p>From 1.26.0 the compiler warns about the forgotten half as <code>WIZZ-G027</code>, through the same channels as <code>WIZZ-G026</code>, located at the call:</p>
+        <CodeBlock code={arrayWarning} lang="text" title="wizz build" />
+        <p>It fires for <code>push</code>, <code>pop</code>, <code>shift</code>, <code>unshift</code>, <code>splice</code>, <code>sort</code>, <code>reverse</code>, <code>fill</code>, and <code>copyWithin</code> called as a statement of its own inside a function or inline <code>on:</code> handler, when nothing assigns or member-writes that name later in the outermost enclosing function. A later assignment inside a nested callback counts, so <code>{"items.push(x); setTimeout(() => { items = items; });"}</code> is quiet.</p>
+        <Callout kind="note" title="What G027 does not catch" body={"The check is syntactic and conservative. It does not follow aliases (const a = items; a.push(x)), computed names (items['push'](x)), calls in expression position or an unbraced if body on the same line, or Map and Set methods. Props are excluded because they are read-only. Calls at the top level of the script run before the first render, so they are never reported."} />
+
         <h2 id="events" class="reveal">Event handling</h2>
         <p><code>{"on:<event>"}</code> binds any native DOM event name — <code>click</code>, <code>input</code>, <code>submit</code>, <code>keydown</code>, <code>pointermove</code> — with <code>addEventListener</code>. The value is either a component function or an expression that receives the event.</p>
         <CodeBlock code={eventSource} lang="wizz" title="Search.wizz" />
@@ -263,7 +304,7 @@ if (done) status = "ok";          // warning WIZZ-G026: add braces
         <Callout kind="note" title="Server-rendered textarea and select" body="The server writes value as an attribute, which <textarea> and <select> do not display, so they show their bound value once the page hydrates. Inputs show it immediately." />
 
         <h2 id="lists" class="reveal">Lists with {"{#each}"}</h2>
-        <p>Give each row a key when node identity should follow the item — for example when rows reorder. On reassignment Wizz retains matching keys, moves them into the new order, updates their text and attributes, creates new keys, and removes missing ones. Duplicate keys throw. Elements inside the row body may use <code>on:</code> directives with the item variable in scope (1.22.0+): when a retained key receives a new item object, its handlers automatically read the replacement, and removed rows release their listeners.</p>
+        <p>Give each row a key when node identity should follow the item — for example when rows reorder. When the collection is assigned (a new array, or <code>{"items = items"}</code> after changing it in place; see <a href="#arrays">Arrays and objects</a>), Wizz retains matching keys, moves them into the new order, updates their text and attributes, creates new keys, and removes missing ones. Duplicate keys throw. Elements inside the row body may use <code>on:</code> directives with the item variable in scope (1.22.0+): when a retained key receives a new item object, its handlers automatically read the replacement, and removed rows release their listeners.</p>
         <CodeBlock code={listSource} lang="wizz" title="Todos.wizz" />
         <p>For primitives, or when position is identity enough, omit the key. A keyless block updates rows in place by index, appends as it grows, and trims as it shrinks.</p>
         <CodeBlock code={keylessSource} lang="wizz" title="Tags.wizz" />

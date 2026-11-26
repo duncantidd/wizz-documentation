@@ -50,7 +50,7 @@
   const overviewOut = `{
   "root": "/mnt/c/Users/dunca/Develop/wizz-documentation",
   "inputDirectory": "src",
-  "versions": { "compiler": "1.25.0", "syntax": "1.6.0", "output": "1.13.0" },
+  "versions": { "compiler": "1.26.0", "syntax": "1.6.0", "output": "1.13.1" },
   "documentShell": true,
   "distPresent": true,
   "adapters": ["node"],

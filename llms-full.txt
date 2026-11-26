@@ -2,7 +2,7 @@
 
 > Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes.
 
-Versions covered: compiler 1.25.0, syntax 1.6.0, output 1.13.0 (`wizz --version`).
+Versions covered: compiler 1.26.0, syntax 1.6.0, output 1.13.1 (`wizz --version`).
 Human-readable docs: /docs/getting-started. Index: /llms.txt. Source: https://github.com/duncantidd/wizz.js
 
 Wizz.js is NOT React, Vue, or Svelte. Its template grammar is deliberately tiny and statically analyzable, and the compiler rejects most idioms from other frameworks with a stable diagnostic code. When in doubt, compute it in `<script>` and reference the result by name.
@@ -249,17 +249,21 @@ count = count + 1;
 count += 1;
 count++;
 user.name = "Grace";              // property chains mark the root (user)
+items[0] = first;                 // element writes mark the root too
 items = [...items, next];
+items.push(next); items = items;  // mutate, then assign: the assignment is the trigger
 setTimeout(() => { status = "done"; }, 500);
 onMount(() => { ready = true; });
 
 // NOT tracked
-items.push(next);                 // method call: reassign the array instead
+items.push(next);                 // no assignment after it: warning WIZZ-G027 (1.26.0+)
 log(count = 5);                   // assignment inside an expression: warning WIZZ-G026
 if (done) status = "ok";          // unbraced body: add braces (warning WIZZ-G026)
 ```
 
 The same rules apply to inline `on:` handlers from compiler 1.17.1: `on:input={(e) => name = e.target.value}` is tracked, and from 1.23.0 so is the parenthesized `on:input={(e) => (name = e.target.value)}`, while `on:click={() => ok ? a = 1 : 0}` is not (the assignment sits inside an expression). From 1.23.0 every untracked assignment of a reactive name, in the script or a handler, is reported as warning WIZZ-G026 with its location; warnings never fail a build. Releases before 1.17.1 did not track assignments written directly in an inline handler; if `wizz --version` reports an older compiler, run `wizz update`.
+
+Arrays and objects: assignment is the only trigger and there is no identity check, so a self-assignment re-renders. Change an array by assigning a copy (`items = [...items, x]`) or by mutating and then assigning the same array (`items.push(x); items = items;`). Keyed and keyless `{#each}` blocks re-run every row's update on assignment, so item objects changed in place (`rows[1].name = "Cy"; rows = rows;`) show their new values without the row being rebuilt. There are no proxies and array methods are not instrumented. From 1.26.0, a statement-level `push`, `pop`, `shift`, `unshift`, `splice`, `sort`, `reverse`, `fill`, or `copyWithin` call on a reactive `let` inside a function or inline handler, with no assignment or member write of that name later in the outermost enclosing function, is warning WIZZ-G027 located at the call. Not detected: aliases (`const a = items; a.push(x)`), computed names (`items['push'](x)`), calls in expression position, `Map`/`Set` methods, props (read-only), and top-level script calls (they run before the first render). Builds should stay warning-free.
 
 - Use `const` for locals inside helper functions: the state scanner treats `let` declarations as component state.
 - Reactive names may not be `__proto__` or start with `__wizz` (WIZZ-G017).
@@ -564,6 +568,7 @@ Most common:
 | WIZZ-P056 / P060 | `++`/`--`, or a code-from-string sink, in an expression | Mutate in a handler |
 | WIZZ-P062 / P063 / P064 | Unsupported binding / invalid binding target / conflicting attribute | `value={...}` + `on:input`, or bind a top-level `let` |
 | WIZZ-G026 (warning) | Reactive name assigned where no update is scheduled | Make the assignment its own statement; brace `if` bodies |
+| WIZZ-G027 (warning) | Array changed in place (`push`, `sort`, ...) with no assignment after it (1.26.0+) | Add `items = items;` after the call, or assign a copy |
 | WIZZ-G002 | `{#each}` outside a native element | Wrap the block |
 | WIZZ-G003 | `{#each}` body needs one root element | Wrap the row |
 | WIZZ-G004 | Component inside `{#each}` | Native markup in rows |
@@ -577,7 +582,7 @@ Most common:
 
 Parse stage (WIZZ-P): P001 tokenizer error · P002 malformed `{#each}` · P003 unexpected `{/each}` · P004 unexpected `{/if}` · P005 unexpected `{:else}` · P006 disallowed child in `<title>` · P007 disallowed element in `<wizz:head>` · P008 element in `<wizz:style>` · P009 attributes on `<wizz:head>` · P010 nested `<wizz:head>` · P011 attributes on `<wizz:style>` · P012 nested `<wizz:style>` · P013 duplicate `<wizz:head>` · P014 duplicate `<wizz:style>` · P015 block directive in `<wizz:head>` · P016 expression directly in `<wizz:head>` · P017 expression in `<wizz:style>` · P018 mismatched closing tag · P019 only title/meta/link in head · P020 plain `<style>` · P021 closing tag on void element · P022 unclosed tag · P023 unexpected closing tag · P024 unsupported token · P025 unclosed string in expression · P026 unexpected character in expression · P027 unparseable expression start · P028 expected `)` · P029 expected property after `.` · P030 unexpected expression token · P031 missing `{#if}` condition · P032 dynamic attribute missing expression · P033 template expression error · P034 invalid prop name · P035 reserved prop prefix `__wizz` · P036 `export let` without a name · P037 `export` not at top level · P038 one prop per `export let` · P039 invalid prop declaration · P040 duplicate prop · P041 prop missing value · P042 prop missing semicolon · P043 unsupported export syntax · P044 `persist()` on a prop · P045 `persist()` on a const · P046 `persist()` not top level · P047 statements trailing a `persist()` declaration · P048 `persist()` missing arguments · P049 `persist()` extra arguments · P050 `persist()` key not a string literal · P051 nested `persist()` · P052 unparseable `persist()` call · P053 expression depth budget exceeded · P054 template depth budget exceeded · P055 interpolation inside a quoted attribute value (1.22.1+) · P056 `++`/`--` in an expression · P057 number or string literal a module cannot load · P058 conditional missing `:` · P059 calling something other than a name or method · P060 code-from-string sink in an expression that calls · P061 reserved word as a name · P062 unsupported binding · P063 invalid binding target · P064 conflicting binding (P056–P064: 1.23.0+).
 
-Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native element · G003 `{#each}` body needs one root · G004 component in `{#each}` · G005 unsupported node in `{#each}` (nested blocks) · G006 retired in 1.22.0 (was: `on:` in `{#each}`) · G007 invalid prop attribute name · G008 children on component tag · G009 component missing id (internal) · G010 component tag outside native element · G011 `on:` on component tag · G012 event directive missing handler · G013 invalid event directive · G014 disallowed child in `<title>` · G015 assignment to a prop · G016 imports must be on their own lines · G017 reserved reactive name · G018 server build: unsupported node · G019 server build: unsupported head node · G020 server build: component not server-renderable · G021 void element with children · G022 hydration: unsupported node · G023 hydration: unsupported node in `{#each}` · G024 `persist()` rewrite drift (internal) · G025 reserved top-level, prop, or import name · G026 warning: reactive name assigned where no update is scheduled (1.23.0+).
+Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native element · G003 `{#each}` body needs one root · G004 component in `{#each}` · G005 unsupported node in `{#each}` (nested blocks) · G006 retired in 1.22.0 (was: `on:` in `{#each}`) · G007 invalid prop attribute name · G008 children on component tag · G009 component missing id (internal) · G010 component tag outside native element · G011 `on:` on component tag · G012 event directive missing handler · G013 invalid event directive · G014 disallowed child in `<title>` · G015 assignment to a prop · G016 imports must be on their own lines · G017 reserved reactive name · G018 server build: unsupported node · G019 server build: unsupported head node · G020 server build: component not server-renderable · G021 void element with children · G022 hydration: unsupported node · G023 hydration: unsupported node in `{#each}` · G024 `persist()` rewrite drift (internal) · G025 reserved top-level, prop, or import name · G026 warning: reactive name assigned where no update is scheduled (1.23.0+) · G027 warning: array changed in place with no assignment afterwards (1.26.0+).
 
 ---
 
@@ -593,7 +598,7 @@ Generate stage (WIZZ-G): G001 no root element · G002 `{#each}` outside native e
 | `<Card><p>Body</p></Card>` / `<slot>` | `<Card body="..." />` or compose native elements around the tag |
 | `<Child on:save={fn} />` / `@save` / `onSave` event emit | Callback prop: `<Child onSave={fn} />`, child calls `onSave(value)` |
 | `{#each}` row with a component (`<Row item={item} />`) | Native row markup (`on:click={() => fn(item.id)}` on native elements inside `{#each}` works in 1.22.0+; on older compilers use a delegated listener on the parent) |
-| `items.push(x)` | `items = [...items, x];` |
+| `items.push(x)` on its own | `items.push(x); items = items;` or `items = [...items, x];` (a bare push is warning WIZZ-G027, 1.26.0+) |
 | `$:` reactive statements, `computed`, `useMemo` | A `recompute()` function called after changes and in `onMount` |
 | `useState`, `ref()`, `$state` | Top-level `let` |
 | `import { onMount } from "..."` | Just call `onMount(...)`: it is a compiler global |
