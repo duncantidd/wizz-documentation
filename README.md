@@ -31,11 +31,12 @@ To check the site against an unreleased compiler, build with the CLI from a loca
 
     docker compose --profile local up --build web-local
 
-or without compose:
+and open http://localhost:8081 (the release build stays on http://localhost:8080, so the two are never confused). Without compose:
 
     docker build --build-arg WIZZ_SOURCE=local --build-context wizz=../wizzjs -t wizz-documentation:local .
+    docker run --rm -p 8081:8080 wizz-documentation:local
 
-Both serve at http://localhost:8080. A local build only proves the site is ready: Render still uses the pinned release, so merge to main only after that compiler version is released and WIZZ_VERSION is bumped to it.
+A local build only proves the site is ready: Render still uses the pinned release, so merge to main only after that compiler version is released and WIZZ_VERSION is bumped to it.
 
 ## Project layout
 
