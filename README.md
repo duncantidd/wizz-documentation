@@ -21,6 +21,22 @@ Builds the project, serves it at http://localhost:3000, and watches src/**/*.wiz
 
 Writes the production build to dist/: compiled component modules, the copied runtime, and the extracted styles, self-contained for static deployment. dist/ is disposable generated output — everything you edit lives in index.html, App.css, and src/**/*.wizz.
 
+## Docker build
+
+The Dockerfile builds the site with the Wizz release pinned in WIZZ_VERSION, and Render deploys exactly that build. Check it locally with:
+
+    docker compose up --build
+
+To check the site against an unreleased compiler, build with the CLI from a local wizz.js working tree instead (default ../wizzjs, override with WIZZ_SOURCE_DIR):
+
+    docker compose --profile local up --build web-local
+
+or without compose:
+
+    docker build --build-arg WIZZ_SOURCE=local --build-context wizz=../wizzjs -t wizz-documentation:local .
+
+Both serve at http://localhost:8080. A local build only proves the site is ready: Render still uses the pinned release, so merge to main only after that compiler version is released and WIZZ_VERSION is bumped to it.
+
 ## Project layout
 
     index.html                   Document shell

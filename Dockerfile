@@ -1,7 +1,16 @@
 # syntax=docker/dockerfile:1
 
-# ---- Build stage: install the Wizz CLI and compile the site ----------------
-FROM node:22-alpine AS build
+# Where the Wizz CLI comes from:
+#   release (default) - the pinned GitHub release below. Render deploys use this.
+#   local             - a wizz.js working tree passed as the named build context
+#                       "wizz", for checking the site against an unreleased compiler:
+#     docker build --build-arg WIZZ_SOURCE=local --build-context wizz=../wizzjs .
+# BuildKit only builds the stage the build stage selects, so a release build
+# never needs the "wizz" context.
+ARG WIZZ_SOURCE=release
+
+# ---- CLI from the pinned release --------------------------------------------
+FROM node:22-alpine AS cli-release
 
 # Pin the CLI so a new Wizz release never changes a deploy silently.
 ARG WIZZ_VERSION=1.26.0
@@ -12,6 +21,22 @@ RUN curl -fsSL "https://raw.githubusercontent.com/duncantidd/wizz.js/v${WIZZ_VER
       | bash -s -- "https://github.com/duncantidd/wizz.js/releases/download/v${WIZZ_VERSION}/wizz-${WIZZ_VERSION}.tgz" \
  && /root/.local/bin/wizz --version
 ENV PATH="/root/.local/bin:${PATH}"
+
+# ---- CLI from a local wizz.js working tree ----------------------------------
+FROM node:22-alpine AS cli-local
+
+RUN apk add --no-cache bash
+# Only what `install-cli.sh --local` reads, so the tree's .git and
+# node_modules are never sent to the builder.
+COPY --from=wizz build.js /wizz/build.js
+COPY --from=wizz src /wizz/src
+COPY --from=wizz scripts /wizz/scripts
+RUN bash /wizz/scripts/install-cli.sh --local \
+ && /root/.local/bin/wizz --version
+ENV PATH="/root/.local/bin:${PATH}"
+
+# ---- Build stage: compile the site with the selected CLI --------------------
+FROM cli-${WIZZ_SOURCE} AS build
 
 WORKDIR /app
 COPY . .

@@ -1,4 +1,9 @@
 # Local production check: docker compose up --build, then open http://localhost:8080
+#
+# Against an unreleased compiler, build with the CLI from a local wizz.js
+# working tree (default ../wizzjs; override with WIZZ_SOURCE_DIR):
+#   docker compose --profile local up --build web-local
+# It uses the same port, so stop "web" first if it is running.
 services:
   web:
     build: .
@@ -12,3 +17,20 @@ services:
       - path: .env.server
         required: false
     restart: unless-stopped
+
+  web-local:
+    profiles: [local]
+    build:
+      context: .
+      args:
+        WIZZ_SOURCE: local
+      additional_contexts:
+        wizz: ${WIZZ_SOURCE_DIR:-../wizzjs}
+    image: wizz-documentation:local
+    ports:
+      - "8080:8080"
+    environment:
+      PORT: "8080"
+    env_file:
+      - path: .env.server
+        required: false
