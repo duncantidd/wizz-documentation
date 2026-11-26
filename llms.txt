@@ -1,6 +1,6 @@
 # Wizz.js
 
-> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.23.0, syntax 1.6.0, output 1.13.0.
+> Wizz.js is a zero-dependency, full-stack JavaScript framework. Single-file `.wizz` components compile ahead of time to plain DOM creation/update code and statically scoped CSS. Pages server-render by default and hydrate in the browser, with no Virtual DOM, no npm runtime packages, and built-in server API routes. Current version: compiler 1.26.0, syntax 1.6.0, output 1.13.1.
 
 Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail to compile. Before writing a `.wizz` file, read [the full reference](/llms-full.txt). The rules that trip agents up most:
 
@@ -9,7 +9,7 @@ Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail
 - Dynamic attributes must be unquoted: `class={cardClass}` or `class={"card " + state}`. A quoted value such as `class="card {state}"` is static: from 1.22.1 it fails with WIZZ-P055 (before 1.22.1 the braces rendered literally with no diagnostic). From 1.21.0, HTML boolean attributes (`hidden`, `required`, `open`, ...) toggle presence by truthiness and any dynamic attribute is removed for `null`/`undefined`; other attributes render `false` as `"false"`. Before 1.21.0, dynamic attributes other than `value`/`checked`/`disabled` were stringified and never removed, so `hidden={false}` still hid. There is no `bind:`.
 - Components are self-closing tags inside a native element: no children, no slots, and no `on:` directives on component tags (pass callback props).
 - `{#each}` sits inside a native element, has one native root element per row, and its body may not contain components or nested `{#if}`/`{#each}`. From 1.22.0, `on:` directives inside `{#each}` run with the row item in scope (`on:click={() => remove(item.id)}`); before 1.22.0 they failed with WIZZ-G006 and required delegation from the parent.
-- Top-level `let` is reactive; update by reassignment (`items = [...items, x]`), not mutation (`items.push(x)`).
+- Top-level `let` is reactive and assignment is the only update trigger, with no identity check: assign a copy (`items = [...items, x]`) or mutate then assign the same array (`items.push(x); items = items;`). A bare `items.push(x)` updates nothing and is warning WIZZ-G027 (1.26.0+). Member writes (`user.name = x`, `items[0] = y`) mark the root name.
 - From 1.22.0, `{#if}` re-evaluates when a reactive `let` or prop read by its condition changes and swaps its branch in place (tearing down the old branch's listeners, lists, and child components); before 1.22.0, `{#if}` chose its branch once at mount. There is no `{:else if}`: nest `{#if}` inside `{:else}`. Use `hidden={flag}` when an element should keep its DOM state while hidden.
 - `bind:value={name}` (input, textarea, select) and `bind:checked={done}` (checkbox) bind a top-level `let` two-way from 1.23.0; not on component tags or inside `{#each}` bodies. Assignments in inline `on:` handlers update the DOM, parenthesized or not (`on:input={(e) => (name = e.target.value)}`, 1.23.0+). An assignment nested inside an expression or an unbraced `if` body does not update the DOM and is reported as warning WIZZ-G026 (1.23.0+).
 - The Wizz MCP server's `project_overview` and `language_contract` tools return these limits as a table with working patterns (1.17.1+).
@@ -23,7 +23,7 @@ Wizz.js is not React, Vue, or Svelte, and most idioms from those frameworks fail
 ## Core concepts
 
 - [Components & Templating](/docs/components): Component anatomy, the template expression grammar, dynamic attributes, props, composition, scoped styles, `<wizz:head>`, lifecycle, and the rules the compiler enforces.
-- [State & Reactivity](/docs/reactivity): Reactive `let`, microtask batching, which mutations are tracked, events, keyed and keyless `{#each}`, `{#if}`, `persist()`, derived-value and cleanup patterns.
+- [State & Reactivity](/docs/reactivity): Reactive `let`, microtask batching, which mutations are tracked, arrays and objects (`items = items`, WIZZ-G027), events, keyed and keyless `{#each}`, `{#if}`, `persist()`, derived-value and cleanup patterns.
 - [Routing & Navigation](/docs/routing): File-system routes, the route manifest, the client router, links, view transitions, query parameters, guards and redirects.
 - [Server APIs & SSR](/docs/server): `src/server/api/*.js` handlers, the request context, return values, `.env.server` secrets, server rendering eligibility, deploying with the node adapter.
 

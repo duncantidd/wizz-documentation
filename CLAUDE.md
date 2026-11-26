@@ -72,14 +72,14 @@ Consult `.skills/wizz/README.md` and its 4 sub-guides before writing `.wizz` fil
     6. Calls of a script function or method (`{plural(count)}`, `{name.trim()}`); a call re-renders only when a reactive name passed to it changes
   - **FORBIDDEN in `{...}`**: indexing (`{a[0]}`), `==`/`!=`, `??`, `?.`, `++`/`--`, template literals, arrow functions, array or object literals. Compute those in `<script>`.
   - **Two-way inputs**: `bind:value={name}` on `<input>`/`<textarea>`/`<select>` and `bind:checked={done}` on checkboxes, with a top-level `let`. Not on component tags or inside `{#each}` bodies.
-  - **Warnings**: an assignment nested in an expression or an unbraced `if` body is warning `WIZZ-G026` and does not update the DOM. Builds must stay warning-free: make each assignment its own statement and brace control-flow bodies.
+  - **Warnings**: an assignment nested in an expression or an unbraced `if` body is warning `WIZZ-G026`, and an in-place array call (`items.push(x)`) with no assignment after it is warning `WIZZ-G027` (1.26.0+). Neither updates the DOM. Builds must stay warning-free: make each assignment its own statement, brace control-flow bodies, and assign after mutating.
 - **Component Imports & Composition**:
   - Use default imports only: `import Counter from "./components/Counter.wizz";`
   - Render imported components as **self-closing tags** inside a native DOM parent: `<Counter showReset={true} />`.
   - **No children or slots**: Never write `<Card><p>Child</p></Card>`. Pass content via props (`<Card title="Intro" body="..." />`) or compose using native elements.
   - **No `on:` directives on component tags**: `on:<event>` works only on native HTML elements. Pass callback functions as props instead (`<SearchBar onSearch={handleSearch} />`).
 - **Reactivity, Props, Persistence & Lifecycle**:
-  - **Reactive State**: Top-level `let` variables in `<script>` are reactive and batch DOM updates on the next microtask. Reassign arrays/objects immutably (`items = [...items, newItem]` or `items = items.filter(...)`), never via in-place mutation (`.push()`, `.splice()`).
+  - **Reactive State**: Top-level `let` variables in `<script>` are reactive and batch DOM updates on the next microtask. Assignment is the only trigger, with no identity check: assign a copy (`items = [...items, newItem]`, `items = items.filter(...)`) or mutate and then assign the same array (`items.push(newItem); items = items;`). A bare `.push()`/`.splice()` with nothing assigned afterwards does not update the DOM (`WIZZ-G027`). Member writes (`user.name = x`) mark the root name.
   - **Read-Only Props**: Declare props with `export let propName = defaultValue;`. Never mutate an `export let` prop inside the child component.
   - **Cross-Tab Persistent State**: Declare `let theme = persist("wizz_docs_theme", "dark");` at the **top level** of `<script>` for automatic `localStorage` persistence and cross-tab `storage` synchronization.
   - **Lifecycle Hooks**: Call `onMount(() => { ... })` and `onDestroy(() => { ... })` directly in `<script>` **without importing them** (they are compiler globals). Always read browser-only APIs (`window`, `document`, `URLSearchParams(document.location.search)`) inside `onMount` so SSR output matches initial hydration.

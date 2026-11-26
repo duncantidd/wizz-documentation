@@ -264,7 +264,7 @@ const { source, sourceMap } = compileServer(componentSource, {
   const versionsExample = `const { VERSIONS } = require("./src/compiler");
 
 VERSIONS;
-// { compiler: "1.25.0", syntax: "1.6.0", output: "1.13.0" }  (frozen)`;
+// { compiler: "1.26.0", syntax: "1.6.0", output: "1.13.1" }  (frozen)`;
 
   const noParams = [];
 
@@ -343,7 +343,8 @@ export default async function handler(request) {
     ["G021", "Void element with children"], ["G022", "Hydration: unsupported node"],
     ["G023", "Hydration: unsupported node in {#each}"], ["G024", "persist() rewrite drift (internal guard)"],
     ["G025", "Reserved top-level, prop, or import name (__wizz…, onMount, document…)"],
-    ["G026", "Warning: reactive name assigned where no update is scheduled (1.23.0+)"]
+    ["G026", "Warning: reactive name assigned where no update is scheduled (1.23.0+)"],
+    ["G027", "Warning: array changed in place (push, sort, splice…) with no assignment after it (1.26.0+)"]
   ].map(([code, text]) => ({ code: "WIZZ-" + code, text }));
 
   function trackSheen(event) {
@@ -367,7 +368,7 @@ export default async function handler(request) {
     <main id="main" class="doc-main glass" on:pointermove={trackSheen}>
       <article class="prose">
         <header>
-          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.25.0 · syntax 1.6.0 · output 1.13.0</p>
+          <p class="eyebrow rise" style="--i: 0">Reference · compiler 1.26.0 · syntax 1.6.0 · output 1.13.1</p>
           <h1 class="rise" style="--i: 1">API Reference</h1>
           <p class="lead rise" style="--i: 2">The complete public surface: what a component script can call, what a template can express, what every compiled module exports, and the compiler, router, and server entry points behind them.</p>
         </header>
@@ -407,7 +408,7 @@ export default async function handler(request) {
         <ApiEntry anchor="api-handler" name="handler(request)" kind="default export" origin="src/server/api/*.js" signature="export default async function handler(request: Readonly<Request>): unknown" summary="Server-side route handler. Plain value → 200 JSON, string → text, undefined → 204, { status, headers, body } → full control, throw → fixed 500." params={handlerParams} returns="See the return-value table in Server APIs & SSR." example={handlerExample} exampleLang="js" exampleTitle="src/server/api/health.js" />
 
         <h2 id="diagnostics" class="reveal">Diagnostic codes</h2>
-        <p>Every author-facing compile failure carries a stable code. Codes are never reworded into a different meaning or reused, so tooling can switch on them. <code>WIZZ-A###</code> is reserved and empty. <code>WIZZ-G026</code> is a <strong>warning</strong> (1.23.0+): it is reported with <code>"severity": "warning"</code> and never fails a build.</p>
+        <p>Every author-facing compile failure carries a stable code. Codes are never reworded into a different meaning or reused, so tooling can switch on them. <code>WIZZ-A###</code> is reserved and empty. <code>WIZZ-G026</code> (1.23.0+) and <code>WIZZ-G027</code> (1.26.0+) are <strong>warnings</strong>: they are reported with <code>"severity": "warning"</code> and never fail a build.</p>
         <Callout kind="tip" title="Machine-readable everywhere" body="wizz build --json, the MCP component_diagnostics tool, and compile({ diagnostics: 'collect' }) all return the same { code, severity, message, file, line, column } records. Warnings use the same shape and appear in compile().warnings and beside errors in the others." />
         <h3>Parse stage — WIZZ-P</h3>
         <div class="table-scroll">
